@@ -15,6 +15,14 @@ model {
             onRampAdapter = component "On-Ramp Adapter" "Fiat -> Stablecoin (deposito)"
             offRampAdapter = component "Off-Ramp Adapter" "Stablecoin -> Fiat (retiro)"
             statusTracker = component "StatusTracker" "Monitoreo de confirmaciones on-chain"
+
+            paymentOrchestrator -> fxProvider "Obtiene tasa EUR/USDC"
+            paymentOrchestrator -> liquidityPool "Verifica profundidad"
+            paymentOrchestrator -> onRampAdapter "Deposita fiat"
+            paymentOrchestrator -> offRampAdapter "Retira a fiat destino"
+            paymentOrchestrator -> statusTracker "Monitorea TX"
+            onRampAdapter -> statusTracker "Reporta deposito"
+            offRampAdapter -> statusTracker "Reporta retiro"
         }
         complianceService = container "Servicio de Compliance" {
             identityVerifier = component "IdentityVerifier" "KYC onboarding"
@@ -22,34 +30,31 @@ model {
             travelRuleEngine = component "TravelRuleEngine" "Intercambio de datos VASP"
             sanctionsChecker = component "SanctionsChecker" "Filtro OFAC/UE/UN"
             auditLogger = component "AuditLogger" "Registro inmutable de auditoria"
+
+            identityVerifier -> amlScreener "Valida identidad"
+            amlScreener -> sanctionsChecker "Filtra sanciones"
+            amlScreener -> travelRuleEngine "Intercambia datos"
+            amlScreener -> auditLogger "Registra auditoria"
         }
         issuanceService = container "Servicio de Emision" {
             mintController = component "MintController" "Acuna stablecoins contra reserva"
             burnController = component "BurnController" "Quema stablecoins y libera reserva"
             attestationProvider = component "AttestationProvider" "Genera informes de atestacion"
+
+            mintController -> attestationProvider "Reporta emision"
+            burnController -> attestationProvider "Reporta quema"
         }
         database = container "Base de Datos" "PostgreSQL"
     }
 
     customer -> platform.stablecoinEngine.paymentOrchestrator "Inicia pago en EUR/USD"
     merchant -> platform.stablecoinEngine.statusTracker "Consulta liquidacion"
-
-    platform.stablecoinEngine.paymentOrchestrator -> platform.complianceService.amlScreener "Valida transaccion"
-    platform.stablecoinEngine.paymentOrchestrator -> platform.complianceService.sanctionsChecker "Filtra sanciones"
-    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.fxProvider "Obtiene tasa EUR/USDC"
-    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.liquidityPool "Verifica profundidad"
-    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.onRampAdapter "Deposita fiat"
-    platform.stablecoinEngine.onRampAdapter -> platform.issuanceService.mintController "Emite stablecoins"
-    
-    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.offRampAdapter "Retira a fiat destino"
-    platform.stablecoinEngine.offRampAdapter -> platform.issuanceService.burnController "Quema stablecoins"
+    platform.stablecoinEngine -> platform.complianceService "Valida transaccion"
+    platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
+    platform.stablecoinEngine -> platform.database "Persiste operacion"
+    platform.stablecoinEngine.statusTracker -> platform.database "Registra estado"
     platform.issuanceService.mintController -> bankPartner.fiatAccount "Bloquea reserva"
     platform.issuanceService.burnController -> bankPartner.fiatAccount "Libera reserva"
-    
-    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.statusTracker "Monitorea TX"
-    platform.stablecoinEngine.statusTracker -> platform.database "Registra estado"
-    
-    platform.complianceService.identityVerifier -> platform.database "Almacena KYC"
     platform.complianceService.travelRuleEngine -> bankPartner "Intercambia datos VASP"
     platform.complianceService.auditLogger -> platform.database "Persiste log auditoria"
     platform.issuanceService.attestationProvider -> platform.database "Reportes de respaldo"
@@ -65,10 +70,19 @@ views {
         style merchant {
             color muted
         }
+        style platform.complianceService {
+            color muted
+        }
+        style platform.issuanceService {
+            color muted
+        }
     }
-    
+
     view components of platform.complianceService {
         title "Componentes del Servicio de Compliance"
         include *
+        style platform.stablecoinEngine {
+            color muted
+        }
     }
 }

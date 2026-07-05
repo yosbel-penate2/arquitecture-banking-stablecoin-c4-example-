@@ -8,20 +8,10 @@ model {
         apiGateway = container "API Gateway" "Kong" "Punto de entrada unico"
 
         coreAdapter = container "Adaptador Core Bancario" "Java" "Integracion con sistemas core legacy"
-        stablecoinEngine = container "Motor Stablecoin" "Rust/Go" "Orquestacion de pagos con stablecoins" {
-            paymentRouter = component "PaymentRouter" "Enrutamiento de pagos segun el patrón lift-and-shift"
-            swapEngine = component "SwapEngine" "Conversion fiat <-> stablecoin (on/off ramp)"
-            settlementEngine = component "SettlementEngine" "Liquidacion y conciliacion on-chain"
-            liquidityManager = component "LiquidityManager" "Gestion de liquidez entre pools"
-        }
+        stablecoinEngine = container "Motor Stablecoin" "Rust/Go" "Orquestacion de pagos con stablecoins"
         issuanceService = container "Servicio de Emision" "Go" "Mint/burn de stablecoins contra reservas"
         reserveManager = container "Gestor de Reservas" "Rust" "Control de reservas 1:1 y generacion de informes"
-        complianceService = container "Servicio de Compliance" "Python" "KYC/AML, Travel Rule, sanciones" {
-            identityVerifier = component "IdentityVerifier" "Verificacion KYC de identidad"
-            amlScreener = component "AmlScreener" "Monitoreo de transacciones AML"
-            travelRuleEngine = component "TravelRuleEngine" "Cumplimiento Travel Rule (MiCA, GENIUS)"
-            sanctionsChecker = component "SanctionsChecker" "Filtro de sanciones OFAC/UE"
-        }
+        complianceService = container "Servicio de Compliance" "Python" "KYC/AML, Travel Rule, sanciones"
         walletService = container "Servicio de Wallets" "Go" "Gestion de billeteras blockchain"
         notificationService = container "Servicio de Notificaciones" "Node.js" "Alertas y notificaciones"
         blockchainNode = container "Nodo Blockchain" "Ethereum" "Conexion directa a la red"
@@ -39,21 +29,17 @@ model {
     platform.apiGateway -> platform.coreAdapter "Delega operaciones core"
     platform.apiGateway -> platform.stablecoinEngine "Procesa pagos"
     platform.apiGateway -> platform.complianceService "Valida cumplimiento"
-    
-    platform.stablecoinEngine.paymentRouter -> platform.stablecoinEngine.swapEngine "Convierte divisa"
-    platform.stablecoinEngine.paymentRouter -> platform.stablecoinEngine.settlementEngine "Liquida transaccion"
-    platform.stablecoinEngine.paymentRouter -> platform.stablecoinEngine.liquidityManager "Verifica liquidez"
 
     platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
     platform.stablecoinEngine -> platform.walletService "Firma transaccion"
     platform.stablecoinEngine -> platform.blockchainNode "Envia TX"
-    
+
     platform.issuanceService -> platform.reserveManager "Verifica reservas"
     platform.blockchainNode -> platform.indexer "Genera eventos"
     platform.indexer -> platform.database "Registra confirmaciones"
     platform.stablecoinEngine -> platform.database "Persiste operacion"
     platform.complianceService -> platform.database "Almacena auditoria"
-    
+
     platform.coreAdapter -> platform.database "Sincroniza contabilidad"
     platform.stablecoinEngine -> platform.notificationService "Notifica estado"
 }
