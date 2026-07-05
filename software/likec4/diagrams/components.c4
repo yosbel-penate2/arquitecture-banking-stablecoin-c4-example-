@@ -101,7 +101,6 @@ model {
 views {
     view stablecoinEngineComponents of platform.stablecoinEngine {
         title "Stablecoin Engine - Process Manager / Saga + Hexagonal Architecture"
-        include *
         description """
             Bounded Context: Payment Orchestration
 
@@ -113,6 +112,7 @@ views {
             Failure path: if any step fails, SagaLogger emits PaymentFailed and
             triggers compensating transactions (e.g., reverse mint, release fiat).
         """
+        include *
         style customer {
             color muted
         }
@@ -132,7 +132,6 @@ views {
 
     view complianceComponents of platform.complianceService {
         title "Compliance Service - Off-chain + On-chain Anchor"
-        include *
         description """
             Bounded Context: Compliance & Identity
 
@@ -143,6 +142,7 @@ views {
 
             RuleEngine supports configurable rules per jurisdiction.
         """
+        include *
         style stablecoinEngine {
             color muted
         }
@@ -153,7 +153,6 @@ views {
 
     view issuanceComponents of platform.issuanceService {
         title "Issuance Service - Factory Pattern + Reserve Attestation"
-        include *
         description """
             Bounded Context: Token Issuance & Reserve Management
 
@@ -164,6 +163,7 @@ views {
             external accounting firm — essential for regulatory compliance
             and off-chain attestation.
         """
+        include *
         style bankPs {
             color muted
         }
