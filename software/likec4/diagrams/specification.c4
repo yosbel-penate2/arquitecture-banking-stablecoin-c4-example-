@@ -6,25 +6,25 @@ specification {
     }
     element softwareSystem {
         style {
-            shape roundedBox
+            shape rectangle
         }
     }
     element container {
         style {
-            shape roundedBox
+            shape rectangle
             color primary
         }
     }
     element component {
         style {
-            shape box
+            shape rectangle
             color secondary
         }
     }
     element database {
         style {
             shape cylinder
-            icon "https://icons.terrastruct.com/database.svg"
+            icon https://icons.terrastruct.com/database.svg
         }
     }
     element queue {
