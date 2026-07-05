@@ -83,7 +83,7 @@ model {
 }
 
 views {
-    view components of platform.stablecoinEngine {
+    view stablecoinEngineComponents of platform.stablecoinEngine {
         title "Componentes del Motor Stablecoin - Process Manager / Saga"
         include *
         description "
@@ -110,7 +110,7 @@ views {
         }
     }
 
-    view components of platform.complianceService {
+    view complianceComponents of platform.complianceService {
         title "Componentes del Compliance - Off-chain + On-chain Anchor"
         include *
         description "
@@ -124,7 +124,7 @@ views {
         }
     }
 
-    view components of platform.issuanceService {
+    view issuanceComponents of platform.issuanceService {
         title "Componentes del Servicio de Emision - Factory pattern"
         include *
         description "
