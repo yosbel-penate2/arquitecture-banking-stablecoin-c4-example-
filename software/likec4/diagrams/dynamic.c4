@@ -1,0 +1,31 @@
+views {
+
+    view paymentSaga of platform {
+        title "Payment Saga Flow - Process Manager / Distributed Transaction"
+        include *
+        description "
+            The PaymentOrchestrator executes a 6-step saga with compensating
+            transactions. Steps 3-5 are critical: on failure, the SagaLogger
+            triggers rollback via compensating transactions (reverse mint/burn).
+            Kafka outbox pattern ensures at-least-once delivery of domain events.
+        "
+        style customer {
+            color muted
+        }
+        style merchant {
+            color muted
+        }
+        style platform.eventBus {
+            color muted
+        }
+        style platform.complianceService {
+            color muted
+        }
+        style platform.issuanceService {
+            color muted
+        }
+        style platform.database {
+            color muted
+        }
+    }
+}

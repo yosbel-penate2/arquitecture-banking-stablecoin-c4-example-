@@ -1,17 +1,32 @@
 model {
-    customer = person "Customer / Payer"
-    merchant = person "Merchant / B2B Enterprise"
+    customer = person "Customer / Payer" "Initiates fiat payments (EUR/USD)"
+    merchant = person "Merchant / B2B Enterprise" "Receives fiat settlements"
     regulator = person "Regulatory Bodies" "FinCEN, FCA, VARA, CBUAE"
+    auditor = person "External Auditor" "Attests 1:1 reserve backing monthly"
 
-    bank = softwareSystem "Banking Entity / PSP" "Manages fiat accounts and fiat conversion"
-    blockchain = softwareSystem "Blockchain Networks" "Ethereum, Solana, Polygon, Base, etc."
+    bank = softwareSystem "Banking Entity / PSP" "Manages omnibus fiat accounts, SWIFT, and fiat <-> stablecoin conversion"
+    blockchain = softwareSystem "Blockchain Networks" "Ethereum, Solana, Polygon, Base — settlement layer and on-chain audit trail"
+    custodyProvider = softwareSystem "Custody Provider" "Fireblocks / BitGo — HSM-secured key management and transaction signing"
 
-    paymentGateway = softwareSystem "Stablecoin Payment Gateway" "Stablecoin-powered payment settlement system"
+    paymentGateway = softwareSystem "Stablecoin Payment Gateway" "Stablecoin-powered payment settlement system with 1:1 reserve backing, on-chain compliance anchoring, and real-time settlement"
+
+    customer -> paymentGateway "Initiates payment (EUR/USD)"
+    merchant -> paymentGateway "Configures webhooks, queries settlement status"
+    paymentGateway -> blockchain "Submits TX (USDC, USDT)"
+    paymentGateway -> bank "Deposits/withdraws fiat, converts FX"
+    paymentGateway -> regulator "Submits regulatory reports (SAR, Travel Rule)"
+    paymentGateway -> custodyProvider "Requests transaction signing via HSM"
+    paymentGateway -> auditor "Provides reserve attestation data"
+    bank -> paymentGateway "Confirms fiat settlement"
+    regulator -> bank "Audits fiat reserve accounts"
 }
 
 views {
     view context of paymentGateway {
         title "Context Diagram - Stablecoin Payment Gateway"
         include *
+        style paymentGateway {
+            color primary
+        }
     }
 }

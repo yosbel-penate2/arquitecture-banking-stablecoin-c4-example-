@@ -1,54 +1,68 @@
 model {
     customer = person "Customer"
     merchant = person "Merchant"
+    blockchain = softwareSystem "Blockchain Networks" "Ethereum, Solana, Polygon — on-chain settlement layer"
+    bankPs = softwareSystem "Banking Partner / PSP" "Fiat omnibus accounts, SWIFT, FX conversion"
 
     platform = softwareSystem "Stablecoin Banking Platform" {
-        webApp = container "Web App" "Angular" "Customer web portal"
-        mobileApp = container "Mobile App" "React Native" "Customer mobile app"
-        apiGateway = container "API Gateway" "Kong" "Single entry point [Facade pattern]"
+        webApp = container "Web App" "Angular 19, SSR" "Customer dashboard: payment initiation, history, KYC status"
+        mobileApp = container "Mobile App" "React Native, Expo" "Customer mobile portal with push notifications"
+        apiGateway = container "API Gateway" "Kong 3.x" "Facade pattern: single entry point, auth, rate limiting, routing"
 
-        coreAdapter = container "Core Banking Adapter" "Java" "Anti-Corruption Layer: isolates legacy core banking"
-        stablecoinEngine = container "Stablecoin Engine" "Rust/Go" "Process Manager / Saga: orchestrates the full payment lifecycle"
-        issuanceService = container "Issuance Service" "Go" "Mint/burn stablecoins against reserves [Factory pattern]"
-        reserveManager = container "Reserve Manager" "Rust" "1:1 reserve tracking and attestation report generation"
-        complianceService = container "Compliance Service" "Python" "Off-chain compliance with on-chain audit anchoring"
-        walletService = container "Wallet Service" "Go" "Key management and blockchain transaction signing"
-        notificationService = container "Notification Service" "Node.js" "Alerts and notifications to system actors"
-        blockchainNode = container "Blockchain Node" "Ethereum" "Direct connection to blockchain networks"
-        indexer = container "On-Chain Indexer" "Rust" "Event Sourcing: reads blockchain events as source of truth"
-        eventBus = container "Event Bus" "Redis / Kafka" "Message Broker: async communication between services"
-        database = container "Database" "PostgreSQL" "CQRS Read Model: transaction storage and accounting"
+        coreAdapter = container "Core Banking Adapter" "Spring Boot 3 / Java 21" "Anti-Corruption Layer: isolates stablecoin domain from legacy core (Temenos, SAP), translates protocols and semantics"
+        stablecoinEngine = container "Stablecoin Engine" "Rust (Axum) / Go" "Process Manager / Saga: orchestrates the full 6-step payment saga as a distributed transaction"
+        issuanceService = container "Issuance Service" "Go (Chi)" "Factory pattern: mints/burns stablecoins against 1:1 reserves, manages token supply"
+        reserveManager = container "Reserve Manager" "Rust (Tokio)" "Aggregates 1:1 reserve data, generates monthly attestation reports for external auditors"
+        complianceService = container "Compliance Service" "Python 3.12 (FastAPI)" "Off-chain compliance engine with on-chain audit anchoring — KYC, AML, Travel Rule, sanctions screening"
+        walletService = container "Wallet Service" "Go (Ethereum SDK)" "Key management via Fireblocks/BitGo HSM, EIP-1559 transaction construction and signing"
+        notificationService = container "Notification Service" "Node.js 22 (BullMQ)" "Dispatches email/SMS/webhook/push alerts via template engine, integrates with SendGrid, Twilio"
+        blockchainNode = container "Blockchain RPC Node" "QuickNode / Alchemy" "Connection to Ethereum/Solana RPC for TX submission and event polling"
+        indexer = container "On-Chain Indexer" "Rust (Rocket)" "Event Sourcing: subscribes to blockchain logs, normalizes events, publishes to event bus as source of truth"
+        eventBus = container "Event Bus" "Apache Kafka 3.x" "Message Broker: decouples services via domain topics with at-least-once delivery, outbox pattern, schema registry"
+        readModel = container "Read Model (PostgreSQL)" "PostgreSQL 16, PgBouncer" "CQRS Read Side: denormalized tables optimized for queries, accounting reports, and API responses"
+        
+        monitoring = container "Observability Stack" "Grafana + Prometheus + Tempo + Loki" "Metrics, distributed tracing, structured logging — aggregated health dashboards per bounded context"
     }
 
-    customer -> platform.webApp "Uses"
-    customer -> platform.mobileApp "Uses"
-    merchant -> platform.apiGateway "Checks status"
+    customer -> platform.webApp "Uses HTTPS"
+    customer -> platform.mobileApp "Uses HTTPS"
+
+    merchant -> platform.apiGateway "Queries HTTPS"
 
     platform.webApp -> platform.apiGateway "Consumes REST APIs"
     platform.mobileApp -> platform.apiGateway "Consumes REST APIs"
 
-    platform.apiGateway -> platform.coreAdapter "Delegates core operations"
-    platform.apiGateway -> platform.stablecoinEngine "Initiates payment"
-    platform.apiGateway -> platform.complianceService "Validates compliance"
+    platform.apiGateway -> platform.coreAdapter "Delegates core sync [Anti-Corruption Layer]"
+    platform.apiGateway -> platform.stablecoinEngine "POST /payments [Process Manager trigger]"
+    platform.apiGateway -> platform.complianceService "POST /compliance/validate"
 
-    platform.stablecoinEngine -> platform.issuanceService "Requests mint/burn"
-    platform.stablecoinEngine -> platform.walletService "Signs transaction"
-    platform.stablecoinEngine -> platform.blockchainNode "Sends TX to blockchain"
-    platform.stablecoinEngine -> platform.database "Persists operation [CQRS command]"
-    platform.stablecoinEngine -> platform.eventBus "Publishes domain events"
+    platform.stablecoinEngine -> platform.issuanceService "GRPC: request mint/burn"
+    platform.stablecoinEngine -> platform.walletService "GRPC: sign and broadcast TX"
+    platform.stablecoinEngine -> platform.blockchainNode "JSON-RPC: submit TX"
+    platform.stablecoinEngine -> blockchain "Submits signed TX [CQRS Command]"
+    platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted, PaymentCompleted events"
 
-    platform.issuanceService -> platform.reserveManager "Verifies 1:1 reserves"
-    platform.blockchainNode -> platform.indexer "Propagates blocks and events"
-    platform.indexer -> platform.eventBus "Publishes on-chain confirmations"
-    platform.indexer -> platform.database "Syncs read model"
-    platform.complianceService -> platform.database "Stores audit trail"
-    platform.eventBus -> platform.notificationService "Triggers notifications"
-    platform.eventBus -> platform.complianceService "Activates AML analysis"
-    platform.eventBus -> platform.stablecoinEngine "Notifies confirmations"
+    platform.issuanceService -> platform.reserveManager "GRPC: verify 1:1 reserves"
+    platform.issuanceService -> bankPs "ACH/SEPA: lock/release fiat reserves"
 
-    platform.coreAdapter -> platform.database "Syncs legacy accounting"
-    platform.notificationService -> customer "Sends alerts"
-    platform.notificationService -> merchant "Sends settlement notifications"
+    platform.blockchainNode -> platform.indexer "Streams new blocks and logs"
+    platform.indexer -> platform.eventBus "Publishes TXConfirmed, TransferDetected events"
+    platform.indexer -> platform.readModel "Syncs read model [CQRS Projection]"
+
+    platform.complianceService -> platform.readModel "Stores audit trail"
+    platform.eventBus -> platform.notificationService "Consumes NotificationRequired event"
+    platform.eventBus -> platform.complianceService "Triggers post-TX AML analysis"
+    platform.eventBus -> platform.stablecoinEngine "Notifies TX confirmation"
+
+    platform.coreAdapter -> platform.readModel "Syncs legacy accounting"
+    platform.notificationService -> customer "Sends email/SMS/push notifications"
+    platform.notificationService -> merchant "Sends settlement webhooks"
+
+    platform.monitoring -> platform.stablecoinEngine "Collects metrics and traces"
+    platform.monitoring -> platform.complianceService "Collects metrics and traces"
+    platform.monitoring -> platform.issuanceService "Collects metrics and traces"
+    platform.monitoring -> platform.eventBus "Collects consumer lag and throughput"
+    platform.monitoring -> platform.indexer "Collects indexing latency"
 }
 
 views {
@@ -59,6 +73,15 @@ views {
             color muted
         }
         style merchant {
+            color muted
+        }
+        style platform.webApp {
+            color secondary
+        }
+        style platform.mobileApp {
+            color secondary
+        }
+        style platform.monitoring {
             color muted
         }
     }

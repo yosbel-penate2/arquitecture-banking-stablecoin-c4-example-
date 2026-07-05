@@ -14,11 +14,14 @@ The architecture follows the **Lift-and-Shift** pattern (Crypto-Rails, Fiat at t
 
 ## Included Diagrams
 
-| Diagram | File | Description |
-|---------|------|-------------|
-| Context | `diagrams/context.c4` | System, external actors, and relationships |
-| Containers | `diagrams/containers.c4` | Decomposition into containers with internal components |
-| Components | `diagrams/components.c4` | Stablecoin Engine and Compliance Service |
+| Level | File | Description |
+|-------|------|-------------|
+| Specification | `diagrams/specification.c4` | System scope, deployment nodes, infrastructure |
+| Context | `diagrams/context.c4` | External actors, system boundaries, relationships |
+| Containers | `diagrams/containers.c4` | 12 containers with tech stack & tech boundaries |
+| Components | `diagrams/components.c4` | 3 component views: Saga Engine, Compliance, Issuance |
+| Deployment | `diagrams/deployment.c4` | AWS EKS infra — K8s, RDS, MSK, monitoring |
+| Dynamic | `diagrams/dynamic.c4` | Payment saga flow with compensating TXs |
 
 ## Architecture Pattern
 

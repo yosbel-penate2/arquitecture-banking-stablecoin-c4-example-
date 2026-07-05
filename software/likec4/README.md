@@ -10,9 +10,18 @@ This subproject organizes the architecture of the stablecoin payment system usin
 
 ## Included Diagrams
 
-- Context: `diagrams/context.c4`
-- Containers: `diagrams/containers.c4`
-- Components: `diagrams/components.c4`
+| Level | File | Description |
+|-------|------|-------------|
+| Specification | `diagrams/specification.c4` | System scope, deployment nodes, infrastructure |
+| Context | `diagrams/context.c4` | External actors, system boundaries, relationships |
+| Containers | `diagrams/containers.c4` | 12 containers with tech stack & tech boundaries |
+| Components | `diagrams/components.c4` | 3 component views: Saga Engine, Compliance, Issuance |
+| Deployment | `diagrams/deployment.c4` | AWS EKS infra — K8s, RDS, MSK, monitoring |
+| Dynamic | `diagrams/dynamic.c4` | Payment saga flow with compensating TXs |
+
+## Architecture Docs
+
+- `docs/architecture.md` — ADRs, bounded contexts, pattern deep-dives, success metrics
 
 ## Recommended Usage
 

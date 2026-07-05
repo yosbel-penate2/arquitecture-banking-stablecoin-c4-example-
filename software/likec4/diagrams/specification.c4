@@ -3,4 +3,14 @@ specification {
     element softwareSystem
     element container
     element component
+    element deploymentNode {
+        style {
+            shape node
+        }
+    }
+    element infrastructureNode {
+        style {
+            shape roundedBox
+        }
+    }
 }

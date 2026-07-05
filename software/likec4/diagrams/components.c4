@@ -3,95 +3,104 @@ model {
     merchant = person "Merchant"
 
     bankPartner = softwareSystem "Banking Partner" {
-        fiatAccount = container "Fiat Account" "Omnibus account for 1:1 reserves"
-        swiftGateway = container "SWIFT Gateway" "Interbank settlement"
+        fiatAccount = container "Fiat Omnibus Account" "Multi-currency omnibus for 1:1 reserve backing"
+        swiftGateway = container "SWIFT GPI Gateway" "Interbank settlement and FX conversion"
     }
+    blockchainNetwork = softwareSystem "Ethereum / Solana" "On-chain settlement and audit log"
 
     platform = softwareSystem "Stablecoin Banking Platform" {
-        stablecoinEngine = container "Stablecoin Engine" "Process Manager / Saga pattern" {
-            paymentOrchestrator = component "PaymentOrchestrator" "Process Manager: orchestrates the complete payment saga"
-            fxProvider = component "FX Provider" "Inbound Port: fetches EUR/USDC exchange rate"
-            liquidityPool = component "Liquidity Pool" "Outbound Port: manages on-chain AMM pools"
-            onRampAdapter = component "On-Ramp Adapter" "Outbound Port: fiat -> stablecoin adapter"
-            offRampAdapter = component "Off-Ramp Adapter" "Inbound Port: stablecoin -> fiat adapter"
-            blockchainAdapter = component "BlockchainAdapter" "Outbound Port: sends TX to blockchain"
-            statusTracker = component "StatusTracker" "Event Listener: monitors on-chain confirmations"
-            sagaLogger = component "SagaLogger" "Compensating Transaction: records every step for rollback"
+        stablecoinEngine = container "Stablecoin Engine" "Process Manager / Saga pattern + Hexagonal Architecture" {
+            paymentOrchestrator = component "PaymentOrchestrator" "Process Manager: orchestrates the 6-step payment saga, coordinates compensating transactions on failure"
+            fxProvider = component "FX Provider" "Inbound Port (Hexagonal): fetches EUR/USDC rate from Chainlink oracles / market feeds"
+            liquidityPool = component "Liquidity Pool" "Outbound Port (Hexagonal): queries on-chain AMM pools (Uniswap v3, Curve) for liquidity depth"
+            onRampAdapter = component "On-Ramp Adapter" "Outbound Port (Hexagonal): fiat -> stablecoin conversion via bank transfer / card (Monoova, Checkout.com)"
+            offRampAdapter = component "Off-Ramp Adapter" "Inbound Port (Hexagonal): stablecoin -> fiat settlement via bank partner SWIFT/SEPA"
+            blockchainAdapter = component "BlockchainAdapter" "Outbound Port (Hexagonal): constructs and submits EIP-1559 TX to Ethereum/Solana via wallet service"
+            statusTracker = component "StatusTracker" "Event Listener (Hexagonal): subscribes to Kafka TXConfirmed events, updates saga state"
+            sagaLogger = component "SagaLogger" "Compensating Transaction (Saga): persists every step outcome to enable rollback, emits PaymentFailed on timeout"
 
-            paymentOrchestrator -> sagaLogger "Logs step [Saga log]"
-            paymentOrchestrator -> fxProvider "Step 1: fetches rate"
-            paymentOrchestrator -> liquidityPool "Step 2: checks liquidity"
-            paymentOrchestrator -> onRampAdapter "Step 3: deposits fiat"
-            paymentOrchestrator -> blockchainAdapter "Step 4: sends TX on-chain"
-            paymentOrchestrator -> statusTracker "Step 5: monitors confirmation"
-            paymentOrchestrator -> offRampAdapter "Step 6: withdraws to fiat"
-            onRampAdapter -> sagaLogger "Reports successful deposit"
-            offRampAdapter -> sagaLogger "Reports successful withdrawal"
+            paymentOrchestrator -> sagaLogger "Logs step result [Saga Log]"
+            paymentOrchestrator -> fxProvider "Step 1: fetches EUR/USDC rate"
+            paymentOrchestrator -> liquidityPool "Step 2: verifies on-chain liquidity"
+            paymentOrchestrator -> onRampAdapter "Step 3: initiates fiat deposit (on-ramp)"
+            paymentOrchestrator -> blockchainAdapter "Step 4: submits on-chain TX"
+            paymentOrchestrator -> statusTracker "Step 5: awaits on-chain confirmation"
+            paymentOrchestrator -> offRampAdapter "Step 6: triggers fiat withdrawal (off-ramp)"
+            onRampAdapter -> sagaLogger "Reports fiat deposit result"
+            offRampAdapter -> sagaLogger "Reports fiat withdrawal result"
+            blockchainAdapter -> sagaLogger "Reports TX hash"
             statusTracker -> sagaLogger "Records blockchain confirmation"
-            statusTracker -> paymentOrchestrator "Callback: TX confirmed"
-            blockchainAdapter -> statusTracker "TX hash published"
+            statusTracker -> paymentOrchestrator "Callback: TX confirmed / timeout"
+            blockchainAdapter -> statusTracker "TX hash published to Kafka"
         }
-        complianceService = container "Compliance Service" "Off-chain compliance + On-chain audit" {
-            identityVerifier = component "IdentityVerifier" "KYC onboarding [Customer due diligence]"
-            amlScreener = component "AML Screener" "Transaction Monitoring: real-time risk analysis"
-            travelRuleEngine = component "TravelRuleEngine" "VASP data exchange: Travel Rule data sharing"
-            sanctionsChecker = component "SanctionsChecker" "Screening: OFAC/EU/UN filter on every transaction"
-            auditLogger = component "AuditLogger" "On-chain Anchor: immutable audit record [Blockchain notary]"
-            ruleEngine = component "RuleEngine" "Business Rules: configurable compliance rule engine"
+        complianceService = container "Compliance Service" "Off-chain compliance engine + On-chain audit anchor" {
+            identityVerifier = component "IdentityVerifier" "KYC onboarding: verifies identity via Persona / Onfido [Customer Due Diligence]"
+            amlScreener = component "AML Screener" "Transaction Monitoring: real-time risk scoring (Elliptic, Chainalysis) on every TX"
+            travelRuleEngine = component "TravelRuleEngine" "VASP data exchange: Notabene / Sygna — Travel Rule compliant beneficiary data sharing"
+            sanctionsChecker = component "SanctionsChecker" "Screening: OFAC / EU / UN sanctions list filter on every transaction counterparty"
+            auditLogger = component "AuditLogger" "On-chain Anchor: writes SHA-256 hash of every compliance check to Ethereum [Blockchain Notary]"
+            ruleEngine = component "RuleEngine" "Business Rules: configurable risk thresholds (transaction limits, velocity checks, jurisdiction rules)"
 
-            identityVerifier -> amlScreener "Initiates screening"
-            amlScreener -> sanctionsChecker "Filters sanctions"
-            amlScreener -> ruleEngine "Evaluates risk rules"
-            ruleEngine -> travelRuleEngine "Activates VASP exchange"
-            amlScreener -> auditLogger "Records audit result"
-            travelRuleEngine -> auditLogger "Anchors exchange on blockchain"
-            sanctionsChecker -> auditLogger "Records screening result"
+            identityVerifier -> amlScreener "Submits verified identity for screening"
+            amlScreener -> sanctionsChecker "Queries sanctions lists per counterparty"
+            amlScreener -> ruleEngine "Evaluates risk rules (amount, velocity, jurisdiction)"
+            ruleEngine -> travelRuleEngine "Triggers VASP data exchange if amount > $3K"
+            amlScreener -> auditLogger "Logs: risk score + decision"
+            travelRuleEngine -> auditLogger "Anchors: Travel Rule exchange hash on-chain"
+            sanctionsChecker -> auditLogger "Logs: screening result hash"
         }
-        issuanceService = container "Issuance Service" "Factory pattern: mint/burn" {
-            mintController = component "MintController" "Factory: mints stablecoins against reserve"
-            burnController = component "BurnController" "Reverse Factory: burns stablecoins and releases reserve"
-            attestationProvider = component "AttestationProvider" "Generates monthly attestation reports"
+        issuanceService = container "Issuance Service" "Factory pattern: mint/burn + reserve attestation" {
+            mintController = component "MintController" "Factory: creates X stablecoins against 1:1 fiat reserve [ERC-20 / SPL token mint]"
+            burnController = component "BurnController" "Reverse Factory: burns X stablecoins and releases corresponding fiat reserve"
+            attestationProvider = component "AttestationProvider" "Generates monthly reserve attestation reports signed by external auditor (Grant Thornton / Deloitte)"
 
-            mintController -> attestationProvider "Reports issuance"
-            burnController -> attestationProvider "Reports burn"
+            mintController -> attestationProvider "Reports issuance volume"
+            burnController -> attestationProvider "Reports burn volume"
         }
-        eventBus = container "Event Bus" "Message Broker / Event-Driven" {
-            domainEvents = component "DomainEvents" "Topic: system domain events"
-            blockchainEvents = component "BlockchainEvents" "Topic: on-chain confirmations and logs"
-            notificationDispatcher = component "NotificationDispatcher" "Consumer: dispatches notifications"
+        eventBus = container "Event Bus" "Apache Kafka — Message Broker / Event-Driven Architecture" {
+            domainEvents = component "DomainEvents" "Topic: platform.payment.{started,completed,failed} — domain events for saga orchestration"
+            blockchainEvents = component "BlockchainEvents" "Topic: blockchain.tx.{confirmed,failed} — normalized on-chain confirmation events"
+            notificationDispatcher = component "NotificationDispatcher" "Consumer: subscribes to NotificationRequired, dispatches via SendGrid / Twilio / webhook"
 
-            domainEvents -> notificationDispatcher "Consumes domain events"
-            blockchainEvents -> notificationDispatcher "Consumes confirmations"
+            domainEvents -> notificationDispatcher "Consumes PaymentCompleted for notification"
+            blockchainEvents -> notificationDispatcher "Consumes TXConfirmed for notification"
         }
-        database = container "Database" "PostgreSQL [CQRS Read Model]"
+        readModel = container "Read Model (PostgreSQL)" "CQRS Read Side — denormalized for queries and reporting"
     }
 
-    customer -> platform.stablecoinEngine.paymentOrchestrator "Initiates payment in EUR/USD"
-    merchant -> platform.stablecoinEngine.statusTracker "Checks settlement status"
-    platform.stablecoinEngine -> platform.complianceService "Validates transaction"
-    platform.stablecoinEngine -> platform.issuanceService "Requests mint/burn"
-    platform.stablecoinEngine -> platform.eventBus "Publishes DomainEvents"
-    platform.stablecoinEngine.blockchainAdapter -> platform.database "Persists command log"
-    platform.stablecoinEngine.statusTracker -> platform.database "Records confirmation status"
-    platform.issuanceService.mintController -> bankPartner.fiatAccount "Locks 1:1 reserve"
-    platform.issuanceService.burnController -> bankPartner.fiatAccount "Releases reserve"
-    platform.complianceService.travelRuleEngine -> bankPartner "Exchanges VASP data"
-    platform.complianceService.auditLogger -> platform.database "Anchors audit log"
-    platform.issuanceService.attestationProvider -> platform.database "Stores reserve reports"
-    platform.eventBus.blockchainEvents -> platform.stablecoinEngine.statusTracker "Notifies TX confirmation"
+    customer -> platform.stablecoinEngine.paymentOrchestrator "Initiates payment in EUR/USD via web/mobile"
+    merchant -> platform.stablecoinEngine.statusTracker "Queries settlement status via API"
+
+    platform.stablecoinEngine -> platform.complianceService "gRPC: validate transaction before execution"
+    platform.stablecoinEngine -> platform.issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
+    platform.stablecoinEngine.blockchainAdapter -> blockchainNetwork "Submits TX to Ethereum/Solana [CQRS Command]"
+    platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted / PaymentCompleted (outbox pattern)"
+    platform.stablecoinEngine.blockchainAdapter -> platform.readModel "Persists command log"
+    platform.stablecoinEngine.statusTracker -> platform.readModel "Records confirmation status"
+
+    platform.issuanceService.mintController -> bankPartner.fiatAccount "ACH: locks 1:1 fiat reserve before mint"
+    platform.issuanceService.burnController -> bankPartner.fiatAccount "SEPA: releases fiat reserve after burn"
+    platform.complianceService.travelRuleEngine -> bankPartner "Sends / receives VASP Travel Rule data"
+    platform.complianceService.auditLogger -> blockchainNetwork "Anchors compliance hash on-chain [Blockchain Notary]"
+    platform.issuanceService.attestationProvider -> platform.readModel "Stores reserve attestation reports"
+    platform.eventBus.blockchainEvents -> platform.stablecoinEngine.statusTracker "Notifies TXConfirmed / TXFailed"
     platform.eventBus.domainEvents -> platform.complianceService.amlScreener "Triggers post-TX AML analysis"
 }
 
 views {
     view stablecoinEngineComponents of platform.stablecoinEngine {
-        title "Stablecoin Engine Components - Process Manager / Saga"
+        title "Stablecoin Engine - Process Manager / Saga + Hexagonal Architecture"
         include *
         description "
-            The PaymentOrchestrator acts as a Process Manager orchestrating
-            the 6-step payment saga. Each step is recorded in the SagaLogger
-            to enable compensating transactions in case of failure.
-            The On-Ramp and Off-Ramp Adapters implement the
-            Ports & Adapters (Hexagonal Architecture) pattern.
+            Bounded Context: Payment Orchestration
+            
+            The PaymentOrchestrator is a Process Manager coordinating a 6-step saga.
+            Each step is recorded in the SagaLogger for compensating transactions.
+            Adapters (On-Ramp, Off-Ramp, Blockchain) are Hexagonal Architecture ports
+            that isolate the engine from external technology.
+            
+            Failure path: if any step fails, SagaLogger emits PaymentFailed and
+            triggers compensating transactions (e.g., reverse mint, release fiat).
         "
         style customer {
             color muted
@@ -111,31 +120,46 @@ views {
     }
 
     view complianceComponents of platform.complianceService {
-        title "Compliance Components - Off-chain + On-chain Anchor"
+        title "Compliance Service - Off-chain + On-chain Anchor"
         include *
         description "
-            Off-chain compliance with On-chain anchoring.
-            The RuleEngine evaluates configurable rules, the AML Screener
-            performs real-time analysis, and the AuditLogger anchors every
-            result on blockchain as an immutable notary.
+            Bounded Context: Compliance & Identity
+            
+            Compliance logic runs off-chain (Python/FastAPI) for performance.
+            AuditLogger anchors every check result on Ethereum as an immutable
+            hash — satisfying regulatory audit requirements without exposing
+            PII on-chain.
+            
+            RuleEngine supports configurable rules per jurisdiction.
         "
         style platform.stablecoinEngine {
+            color muted
+        }
+        style platform.issuanceService {
             color muted
         }
     }
 
     view issuanceComponents of platform.issuanceService {
-        title "Issuance Service Components - Factory Pattern"
+        title "Issuance Service - Factory Pattern + Reserve Attestation"
         include *
         description "
-            MintController and BurnController implement the Factory pattern,
-            creating or destroying stablecoins against 1:1 reserves.
-            AttestationProvider generates monthly attestation reports.
+            Bounded Context: Token Issuance & Reserve Management
+            
+            MintController and BurnController are Factory implementations
+            that create/destroy ERC-20/SPL tokens against 1:1 fiat reserves.
+            
+            AttestationProvider generates monthly reports verified by an
+            external accounting firm — essential for regulatory compliance
+            and off-chain attestation.
         "
         style bankPartner {
             color muted
         }
-        style platform.database {
+        style platform.readModel {
+            color muted
+        }
+        style blockchainNetwork {
             color muted
         }
     }
