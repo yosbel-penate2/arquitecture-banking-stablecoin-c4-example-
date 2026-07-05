@@ -68,8 +68,8 @@ model {
         readModel = database "Read Model (PostgreSQL)" "CQRS Read Side — denormalized for queries and reporting"
     }
 
-    customer -> platform.stablecoinEngine.paymentOrchestrator "Initiates payment in EUR/USD via web/mobile"
-    merchant -> platform.stablecoinEngine.statusTracker "Queries settlement status via API"
+    customer -> platform.stablecoinEngine "Initiates payment in EUR/USD via web/mobile"
+    merchant -> platform.stablecoinEngine "Queries settlement status via API"
 
     platform.stablecoinEngine -> platform.complianceService "gRPC: validate transaction before execution"
     platform.stablecoinEngine -> platform.issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
