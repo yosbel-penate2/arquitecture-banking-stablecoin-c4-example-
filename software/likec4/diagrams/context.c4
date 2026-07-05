@@ -1,31 +1,24 @@
 model {
-    customer = person "Cliente" "Usuario final que envia y recibe pagos en moneda fiduciaria"
-    merchant = person "Comercio" "Negocio que acepta pagos del sistema"
-    regulator = person "Regulador" "Autoridad financiera (MiCA, GENIUS Act)"
-    
-    bankPartner = softwareSystem "Banco Socio" "Gestiona reservas fiduciarias 1:1 y cuentas omnibus"
-    blockchainNetwork = softwareSystem "Red Blockchain" "Ethereum / L2 para liquidacion de stablecoins"
-    coreBankingLegacy = softwareSystem "Core Bancario" "Sistema bancario tradicional (Temenos, SAP)"
+    customer = person "Cliente / Pagador"
+    merchant = person "Comerciante / Empresa B2B"
+    regulator = person "Entes Reguladores" "FinCEN, FCA, VARA, CBUAE"
 
-    stablecoinPlatform = softwareSystem "Plataforma Stablecoin Banking" "Sistema de pagos con liquidacion en stablecoins" {
-        webApp = container "App Web" "Angular"
-        mobileApp = container "App Movil" "React Native"
-        apiGateway = container "API Gateway" "Kong / Envoy"
-    }
+    bank = softwareSystem "Entidad Bancaria / PSP" "Gestiona cuentas fiduciarias y conversión fiat"
+    blockchain = softwareSystem "Redes Blockchain" "Ethereum, Solana, Polygon, Base, etc."
 
-    customer -> stablecoinPlatform.webApp "Inicia pagos y consulta saldo"
-    customer -> stablecoinPlatform.mobileApp "Opera desde el movil"
-    merchant -> stablecoinPlatform.apiGateway "Consulta liquidaciones y cobros"
-    regulator -> stablecoinPlatform.apiGateway "Audita cumplimiento normativo"
-    
-    stablecoinPlatform.apiGateway -> bankPartner "Solicita reservas y swaps fiduciarios"
-    stablecoinPlatform.apiGateway -> blockchainNetwork "Envía transacciones on-chain"
-    stablecoinPlatform.apiGateway -> coreBankingLegacy "Integra contabilidad y cuentas"
+    paymentGateway = softwareSystem "Pasarela de Pago con Stablecoins" "Sistema de liquidacion de pagos con stablecoins"
+
+    customer -> paymentGateway "Inicia pago"
+    merchant -> paymentGateway "Configura / Consulta"
+    paymentGateway -> blockchain "Liquidacion on-chain"
+    paymentGateway -> bank "Conversion Fiat <-> Stablecoin"
+    paymentGateway -> regulator "Reportes de cumplimiento"
+    bank -> paymentGateway "Validacion y liquidacion fiat"
 }
 
 views {
-    view context of stablecoinPlatform {
-        title "Diagrama de Contexto - Stablecoin Banking"
+    view context of paymentGateway {
+        title "Diagrama de Contexto - Pasarela de Pago con Stablecoins"
         include *
     }
 }
