@@ -65,7 +65,7 @@ model {
             domainEvents -> notificationDispatcher "Consumes PaymentCompleted for notification"
             blockchainEvents -> notificationDispatcher "Consumes TXConfirmed for notification"
         }
-        readModel = container "Read Model (PostgreSQL)" "CQRS Read Side — denormalized for queries and reporting"
+        readModel = database "Read Model (PostgreSQL)" "CQRS Read Side — denormalized for queries and reporting"
     }
 
     customer -> platform.stablecoinEngine.paymentOrchestrator "Initiates payment in EUR/USD via web/mobile"

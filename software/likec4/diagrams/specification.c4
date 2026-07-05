@@ -1,8 +1,27 @@
 specification {
-    element person
-    element softwareSystem
+    element person {
+        style {
+            shape person
+        }
+    }
+    element softwareSystem {
+        style {
+            shape roundedBox
+        }
+    }
     element container
     element component
+    element database {
+        style {
+            shape cylinder
+            icon "https://icons.terrastruct.com/database.svg"
+        }
+    }
+    element queue {
+        style {
+            shape queue
+        }
+    }
     element deploymentNode {
         style {
             shape node

@@ -19,7 +19,7 @@ model {
         blockchainNode = container "Blockchain RPC Node" "QuickNode / Alchemy" "Connection to Ethereum/Solana RPC for TX submission and event polling"
         indexer = container "On-Chain Indexer" "Rust (Rocket)" "Event Sourcing: subscribes to blockchain logs, normalizes events, publishes to event bus as source of truth"
         eventBus = container "Event Bus" "Apache Kafka 3.x" "Message Broker: decouples services via domain topics with at-least-once delivery, outbox pattern, schema registry"
-        readModel = container "Read Model (PostgreSQL)" "PostgreSQL 16, PgBouncer" "CQRS Read Side: denormalized tables optimized for queries, accounting reports, and API responses"
+        readModel = database "Read Model (PostgreSQL)" "PostgreSQL 16, PgBouncer" "CQRS Read Side: denormalized tables optimized for queries, accounting reports, and API responses"
         
         monitoring = container "Observability Stack" "Grafana + Prometheus + Tempo + Loki" "Metrics, distributed tracing, structured logging — aggregated health dashboards per bounded context"
     }
