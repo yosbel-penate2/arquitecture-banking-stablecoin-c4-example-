@@ -1,0 +1,74 @@
+model {
+    customer = person "Cliente"
+    merchant = person "Comercio"
+
+    bankPartner = softwareSystem "Banco Socio" {
+        fiatAccount = container "Cuenta Fiduciaria" "Cuenta omnibus para reservas 1:1"
+        swiftGateway = container "Conexion SWIFT" "Liquidacion interbancaria"
+    }
+
+    platform = softwareSystem "Plataforma Stablecoin Banking" {
+        stablecoinEngine = container "Motor Stablecoin" {
+            paymentOrchestrator = component "PaymentOrchestrator" "Orquesta el ciclo completo del pago"
+            fxProvider = component "FX Provider" "Tasas de cambio en tiempo real"
+            liquidityPool = component "Pool de Liquidez" "Gestiona pools on-chain"
+            onRampAdapter = component "On-Ramp Adapter" "Fiat -> Stablecoin (deposito)"
+            offRampAdapter = component "Off-Ramp Adapter" "Stablecoin -> Fiat (retiro)"
+            statusTracker = component "StatusTracker" "Monitoreo de confirmaciones on-chain"
+        }
+        complianceService = container "Servicio de Compliance" {
+            identityVerifier = component "IdentityVerifier" "KYC onboarding"
+            amlScreener = component "AML Screener" "Analisis de riesgo transaccional"
+            travelRuleEngine = component "TravelRuleEngine" "Intercambio de datos VASP"
+            sanctionsChecker = component "SanctionsChecker" "Filtro OFAC/UE/UN"
+            auditLogger = component "AuditLogger" "Registro inmutable de auditoria"
+        }
+        issuanceService = container "Servicio de Emision" {
+            mintController = component "MintController" "Acuna stablecoins contra reserva"
+            burnController = component "BurnController" "Quema stablecoins y libera reserva"
+            attestationProvider = component "AttestationProvider" "Genera informes de atestacion"
+        }
+        database = container "Base de Datos" "PostgreSQL"
+    }
+
+    customer -> platform.stablecoinEngine.paymentOrchestrator "Inicia pago en EUR/USD"
+    merchant -> platform.stablecoinEngine.statusTracker "Consulta liquidacion"
+
+    platform.stablecoinEngine.paymentOrchestrator -> platform.complianceService.amlScreener "Valida transaccion"
+    platform.stablecoinEngine.paymentOrchestrator -> platform.complianceService.sanctionsChecker "Filtra sanciones"
+    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.fxProvider "Obtiene tasa EUR/USDC"
+    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.liquidityPool "Verifica profundidad"
+    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.onRampAdapter "Deposita fiat"
+    platform.stablecoinEngine.onRampAdapter -> platform.issuanceService.mintController "Emite stablecoins"
+    
+    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.offRampAdapter "Retira a fiat destino"
+    platform.stablecoinEngine.offRampAdapter -> platform.issuanceService.burnController "Quema stablecoins"
+    platform.issuanceService.mintController -> bankPartner.fiatAccount "Bloquea reserva"
+    platform.issuanceService.burnController -> bankPartner.fiatAccount "Libera reserva"
+    
+    platform.stablecoinEngine.paymentOrchestrator -> platform.stablecoinEngine.statusTracker "Monitorea TX"
+    platform.stablecoinEngine.statusTracker -> platform.database "Registra estado"
+    
+    platform.complianceService.identityVerifier -> platform.database "Almacena KYC"
+    platform.complianceService.travelRuleEngine -> bankPartner "Intercambia datos VASP"
+    platform.complianceService.auditLogger -> platform.database "Persiste log auditoria"
+    platform.issuanceService.attestationProvider -> platform.database "Reportes de respaldo"
+}
+
+views {
+    view components of platform.stablecoinEngine {
+        title "Componentes del Motor Stablecoin"
+        include *
+        style customer {
+            color muted
+        }
+        style merchant {
+            color muted
+        }
+    }
+    
+    view components of platform.complianceService {
+        title "Componentes del Servicio de Compliance"
+        include *
+    }
+}

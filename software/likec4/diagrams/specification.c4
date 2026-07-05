@@ -1,0 +1,6 @@
+specification {
+    element person
+    element softwareSystem
+    element container
+    element component
+}

@@ -1,0 +1,47 @@
+name: Publish LikeC4 Diagrams
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: software/likec4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: likec4/actions@v1
+        with:
+          working-directory: software/likec4
+          use-dot-bin: 'true'
+          export-png: 'true'
+      - name: Build LikeC4 site
+        run: npx likec4 build
+      - name: Fix permissions
+        run: |
+          chmod -R +x .likec4/
+      - name: Create .nojekyll
+        run: touch .likec4/.nojekyll
+      - name: Copy README to site root
+        run: cp ../../README.md .likec4/
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: software/likec4/.likec4
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

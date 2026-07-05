@@ -1,0 +1,72 @@
+model {
+    customer = person "Cliente"
+    merchant = person "Comercio"
+
+    platform = softwareSystem "Plataforma Stablecoin Banking" {
+        webApp = container "App Web" "Angular" "Portal web del cliente"
+        mobileApp = container "App Movil" "React Native" "App movil del cliente"
+        apiGateway = container "API Gateway" "Kong" "Punto de entrada unico"
+
+        coreAdapter = container "Adaptador Core Bancario" "Java" "Integracion con sistemas core legacy"
+        stablecoinEngine = container "Motor Stablecoin" "Rust/Go" "Orquestacion de pagos con stablecoins" {
+            paymentRouter = component "PaymentRouter" "Enrutamiento de pagos segun el patrón lift-and-shift"
+            swapEngine = component "SwapEngine" "Conversion fiat <-> stablecoin (on/off ramp)"
+            settlementEngine = component "SettlementEngine" "Liquidacion y conciliacion on-chain"
+            liquidityManager = component "LiquidityManager" "Gestion de liquidez entre pools"
+        }
+        issuanceService = container "Servicio de Emision" "Go" "Mint/burn de stablecoins contra reservas"
+        reserveManager = container "Gestor de Reservas" "Rust" "Control de reservas 1:1 y generacion de informes"
+        complianceService = container "Servicio de Compliance" "Python" "KYC/AML, Travel Rule, sanciones" {
+            identityVerifier = component "IdentityVerifier" "Verificacion KYC de identidad"
+            amlScreener = component "AmlScreener" "Monitoreo de transacciones AML"
+            travelRuleEngine = component "TravelRuleEngine" "Cumplimiento Travel Rule (MiCA, GENIUS)"
+            sanctionsChecker = component "SanctionsChecker" "Filtro de sanciones OFAC/UE"
+        }
+        walletService = container "Servicio de Wallets" "Go" "Gestion de billeteras blockchain"
+        notificationService = container "Servicio de Notificaciones" "Node.js" "Alertas y notificaciones"
+        blockchainNode = container "Nodo Blockchain" "Ethereum" "Conexion directa a la red"
+        indexer = container "Indexador On-Chain" "Rust" "Lectura de eventos blockchain"
+        database = container "Base de Datos" "PostgreSQL" "Almacenamiento de transacciones y contabilidad"
+    }
+
+    customer -> platform.webApp "Usa"
+    customer -> platform.mobileApp "Usa"
+    merchant -> platform.apiGateway "Consulta estado"
+
+    platform.webApp -> platform.apiGateway "Consume APIs REST"
+    platform.mobileApp -> platform.apiGateway "Consume APIs REST"
+
+    platform.apiGateway -> platform.coreAdapter "Delega operaciones core"
+    platform.apiGateway -> platform.stablecoinEngine "Procesa pagos"
+    platform.apiGateway -> platform.complianceService "Valida cumplimiento"
+    
+    platform.stablecoinEngine.paymentRouter -> platform.stablecoinEngine.swapEngine "Convierte divisa"
+    platform.stablecoinEngine.paymentRouter -> platform.stablecoinEngine.settlementEngine "Liquida transaccion"
+    platform.stablecoinEngine.paymentRouter -> platform.stablecoinEngine.liquidityManager "Verifica liquidez"
+
+    platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
+    platform.stablecoinEngine -> platform.walletService "Firma transaccion"
+    platform.stablecoinEngine -> platform.blockchainNode "Envia TX"
+    
+    platform.issuanceService -> platform.reserveManager "Verifica reservas"
+    platform.blockchainNode -> platform.indexer "Genera eventos"
+    platform.indexer -> platform.database "Registra confirmaciones"
+    platform.stablecoinEngine -> platform.database "Persiste operacion"
+    platform.complianceService -> platform.database "Almacena auditoria"
+    
+    platform.coreAdapter -> platform.database "Sincroniza contabilidad"
+    platform.stablecoinEngine -> platform.notificationService "Notifica estado"
+}
+
+views {
+    view containers of platform {
+        title "Diagrama de Contenedores - Stablecoin Banking"
+        include *
+        style customer {
+            color muted
+        }
+        style merchant {
+            color muted
+        }
+    }
+}

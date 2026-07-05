@@ -1,0 +1,31 @@
+model {
+    customer = person "Cliente" "Usuario final que envia y recibe pagos en moneda fiduciaria"
+    merchant = person "Comercio" "Negocio que acepta pagos del sistema"
+    regulator = person "Regulador" "Autoridad financiera (MiCA, GENIUS Act)"
+    
+    bankPartner = softwareSystem "Banco Socio" "Gestiona reservas fiduciarias 1:1 y cuentas omnibus"
+    blockchainNetwork = softwareSystem "Red Blockchain" "Ethereum / L2 para liquidacion de stablecoins"
+    coreBankingLegacy = softwareSystem "Core Bancario" "Sistema bancario tradicional (Temenos, SAP)"
+
+    stablecoinPlatform = softwareSystem "Plataforma Stablecoin Banking" "Sistema de pagos con liquidacion en stablecoins" {
+        webApp = container "App Web" "Angular"
+        mobileApp = container "App Movil" "React Native"
+        apiGateway = container "API Gateway" "Kong / Envoy"
+    }
+
+    customer -> stablecoinPlatform.webApp "Inicia pagos y consulta saldo"
+    customer -> stablecoinPlatform.mobileApp "Opera desde el movil"
+    merchant -> stablecoinPlatform.apiGateway "Consulta liquidaciones y cobros"
+    regulator -> stablecoinPlatform.apiGateway "Audita cumplimiento normativo"
+    
+    stablecoinPlatform.apiGateway -> bankPartner "Solicita reservas y swaps fiduciarios"
+    stablecoinPlatform.apiGateway -> blockchainNetwork "Envía transacciones on-chain"
+    stablecoinPlatform.apiGateway -> coreBankingLegacy "Integra contabilidad y cuentas"
+}
+
+views {
+    view context of stablecoinPlatform {
+        title "Diagrama de Contexto - Stablecoin Banking"
+        include *
+    }
+}
