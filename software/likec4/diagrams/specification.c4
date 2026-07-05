@@ -32,9 +32,9 @@ specification {
             shape queue
         }
     }
-    element deploymentNode {
+    deploymentNode node {
         style {
-            shape node
+            shape roundedBox
         }
     }
     deploymentNode infrastructureNode {
