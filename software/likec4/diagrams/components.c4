@@ -3,13 +3,21 @@ model {
     merchant = person "Merchant"
 
     bankPartner = softwareSystem "Banking Partner" {
-        fiatAccount = container "Fiat Omnibus Account" "SWIFT / ACH" "Multi-currency omnibus for 1:1 reserve backing"
-        swiftGateway = container "SWIFT GPI Gateway" "SWIFT GPI" "Interbank settlement and FX conversion"
+        fiatAccount = container "Fiat Omnibus Account" {
+            technology "SWIFT / ACH"
+            description "Multi-currency omnibus for 1:1 reserve backing"
+        }
+        swiftGateway = container "SWIFT GPI Gateway" {
+            technology "SWIFT GPI"
+            description "Interbank settlement and FX conversion"
+        }
     }
     blockchainNetwork = softwareSystem "Ethereum / Solana" "On-chain settlement and audit log"
 
     platform = softwareSystem "Stablecoin Banking Platform" {
-        stablecoinEngine = container "Stablecoin Engine" "Rust (Axum) / Go" "Process Manager / Saga pattern + Hexagonal Architecture" {
+        stablecoinEngine = container "Stablecoin Engine" {
+            technology "Rust (Axum) / Go"
+            description "Process Manager / Saga pattern + Hexagonal Architecture"
             paymentOrchestrator = component "PaymentOrchestrator" "Process Manager: orchestrates the 6-step payment saga, coordinates compensating transactions on failure"
             fxProvider = component "FX Provider" "Inbound Port (Hexagonal): fetches EUR/USDC rate from Chainlink oracles / market feeds"
             liquidityPool = component "Liquidity Pool" "Outbound Port (Hexagonal): queries on-chain AMM pools (Uniswap v3, Curve) for liquidity depth"
@@ -36,7 +44,9 @@ model {
             statusTracker -> paymentOrchestrator "Callback: TX confirmed / timeout"
             blockchainAdapter -> statusTracker "TX hash published to Kafka"
         }
-        complianceService = container "Compliance Service" "Python 3.12 (FastAPI)" "Off-chain compliance engine + On-chain audit anchor" {
+        complianceService = container "Compliance Service" {
+            technology "Python 3.12 (FastAPI)"
+            description "Off-chain compliance engine + On-chain audit anchor"
             identityVerifier = component "IdentityVerifier" "KYC onboarding: verifies identity via Persona / Onfido [Customer Due Diligence]"
             amlScreener = component "AML Screener" "Transaction Monitoring: real-time risk scoring (Elliptic, Chainalysis) on every TX"
             travelRuleEngine = component "TravelRuleEngine" "VASP data exchange: Notabene / Sygna — Travel Rule compliant beneficiary data sharing"
@@ -52,7 +62,9 @@ model {
             travelRuleEngine -> auditLogger "Anchors: Travel Rule exchange hash on-chain"
             sanctionsChecker -> auditLogger "Logs: screening result hash"
         }
-        issuanceService = container "Issuance Service" "Go (Chi)" "Factory pattern: mint/burn + reserve attestation" {
+        issuanceService = container "Issuance Service" {
+            technology "Go (Chi)"
+            description "Factory pattern: mint/burn + reserve attestation"
             mintController = component "MintController" "Factory: creates X stablecoins against 1:1 fiat reserve [ERC-20 / SPL token mint]"
             burnController = component "BurnController" "Reverse Factory: burns X stablecoins and releases corresponding fiat reserve"
             attestationProvider = component "AttestationProvider" "Generates monthly reserve attestation reports signed by external auditor (Grant Thornton / Deloitte)"
@@ -60,7 +72,9 @@ model {
             mintController -> attestationProvider "Reports issuance volume"
             burnController -> attestationProvider "Reports burn volume"
         }
-        eventBus = container "Event Bus" "Apache Kafka 3.x" "Message Broker / Event-Driven Architecture" {
+        eventBus = container "Event Bus" {
+            technology "Apache Kafka 3.x"
+            description "Message Broker / Event-Driven Architecture"
             domainEvents = component "DomainEvents" "Topic: platform.payment.{started,completed,failed} — domain events for saga orchestration"
             blockchainEvents = component "BlockchainEvents" "Topic: blockchain.tx.{confirmed,failed} — normalized on-chain confirmation events"
             notificationDispatcher = component "NotificationDispatcher" "Consumer: subscribes to NotificationRequired, dispatches via SendGrid / Twilio / webhook"
@@ -68,7 +82,9 @@ model {
             domainEvents -> notificationDispatcher "Consumes PaymentCompleted for notification"
             blockchainEvents -> notificationDispatcher "Consumes TXConfirmed for notification"
         }
-        readModel = database "Read Model (PostgreSQL)" "CQRS Read Side — denormalized for queries and reporting"
+        readModel = database "Read Model (PostgreSQL)" {
+            description "CQRS Read Side — denormalized for queries and reporting"
+        }
     }
 
     customer -> platform.stablecoinEngine "Initiates payment in EUR/USD via web/mobile"

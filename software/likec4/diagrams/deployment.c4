@@ -2,7 +2,7 @@ deployment {
     cloud = deploymentNode "AWS Cloud (eu-west-1)" "Production region with multi-AZ redundancy" {
         eks = deploymentNode "EKS Cluster v1.30" "Kubernetes, auto-scaling node groups" {
             ingress = infrastructureNode "Kong Ingress Controller" "API Gateway, auth, rate limiting, TLS termination"
-            compute = infrastructureNode "Application Pods" "HPA-configured pods across 3 AZs" 
+            compute = infrastructureNode "Application Pods" "HPA-configured pods across 3 AZs"
             kafka = infrastructureNode "MSK Kafka 3.x" "3 brokers, 12TB, auto-scaling, schema registry"
         }
         rds = deploymentNode "RDS PostgreSQL 16" "Multi-AZ primary + read replica for reporting workloads"

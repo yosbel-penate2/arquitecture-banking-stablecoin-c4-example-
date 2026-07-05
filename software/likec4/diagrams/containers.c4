@@ -5,23 +5,68 @@ model {
     bankPs = softwareSystem "Banking Partner / PSP" "Fiat omnibus accounts, SWIFT, FX conversion"
 
     platform = softwareSystem "Stablecoin Banking Platform" {
-        webApp = container "Web App" "Angular 19, SSR" "Customer dashboard: payment initiation, history, KYC status"
-        mobileApp = container "Mobile App" "React Native, Expo" "Customer mobile portal with push notifications"
-        apiGateway = container "API Gateway" "Kong 3.x" "Facade pattern: single entry point, auth, rate limiting, routing"
+        webApp = container "Web App" {
+            technology "Angular 19, SSR"
+            description "Customer dashboard: payment initiation, history, KYC status"
+        }
+        mobileApp = container "Mobile App" {
+            technology "React Native, Expo"
+            description "Customer mobile portal with push notifications"
+        }
+        apiGateway = container "API Gateway" {
+            technology "Kong 3.x"
+            description "Facade pattern: single entry point, auth, rate limiting, routing"
+        }
 
-        coreAdapter = container "Core Banking Adapter" "Spring Boot 3 / Java 21" "Anti-Corruption Layer: isolates stablecoin domain from legacy core (Temenos, SAP), translates protocols and semantics"
-        stablecoinEngine = container "Stablecoin Engine" "Rust (Axum) / Go" "Process Manager / Saga: orchestrates the full 6-step payment saga as a distributed transaction"
-        issuanceService = container "Issuance Service" "Go (Chi)" "Factory pattern: mints/burns stablecoins against 1:1 reserves, manages token supply"
-        reserveManager = container "Reserve Manager" "Rust (Tokio)" "Aggregates 1:1 reserve data, generates monthly attestation reports for external auditors"
-        complianceService = container "Compliance Service" "Python 3.12 (FastAPI)" "Off-chain compliance engine with on-chain audit anchoring — KYC, AML, Travel Rule, sanctions screening"
-        walletService = container "Wallet Service" "Go (Ethereum SDK)" "Key management via Fireblocks/BitGo HSM, EIP-1559 transaction construction and signing"
-        notificationService = container "Notification Service" "Node.js 22 (BullMQ)" "Dispatches email/SMS/webhook/push alerts via template engine, integrates with SendGrid, Twilio"
-        blockchainNode = container "Blockchain RPC Node" "QuickNode / Alchemy" "Connection to Ethereum/Solana RPC for TX submission and event polling"
-        indexer = container "On-Chain Indexer" "Rust (Rocket)" "Event Sourcing: subscribes to blockchain logs, normalizes events, publishes to event bus as source of truth"
-        eventBus = container "Event Bus" "Apache Kafka 3.x" "Message Broker: decouples services via domain topics with at-least-once delivery, outbox pattern, schema registry"
-        readModel = database "Read Model (PostgreSQL)" "PostgreSQL 16, PgBouncer" "CQRS Read Side: denormalized tables optimized for queries, accounting reports, and API responses"
+        coreAdapter = container "Core Banking Adapter" {
+            technology "Spring Boot 3 / Java 21"
+            description "Anti-Corruption Layer: isolates stablecoin domain from legacy core (Temenos, SAP), translates protocols and semantics"
+        }
+        stablecoinEngine = container "Stablecoin Engine" {
+            technology "Rust (Axum) / Go"
+            description "Process Manager / Saga: orchestrates the full 6-step payment saga as a distributed transaction"
+        }
+        issuanceService = container "Issuance Service" {
+            technology "Go (Chi)"
+            description "Factory pattern: mints/burns stablecoins against 1:1 reserves, manages token supply"
+        }
+        reserveManager = container "Reserve Manager" {
+            technology "Rust (Tokio)"
+            description "Aggregates 1:1 reserve data, generates monthly attestation reports for external auditors"
+        }
+        complianceService = container "Compliance Service" {
+            technology "Python 3.12 (FastAPI)"
+            description "Off-chain compliance engine with on-chain audit anchoring — KYC, AML, Travel Rule, sanctions screening"
+        }
+        walletService = container "Wallet Service" {
+            technology "Go (Ethereum SDK)"
+            description "Key management via Fireblocks/BitGo HSM, EIP-1559 transaction construction and signing"
+        }
+        notificationService = container "Notification Service" {
+            technology "Node.js 22 (BullMQ)"
+            description "Dispatches email/SMS/webhook/push alerts via template engine, integrates with SendGrid, Twilio"
+        }
+        blockchainNode = container "Blockchain RPC Node" {
+            technology "QuickNode / Alchemy"
+            description "Connection to Ethereum/Solana RPC for TX submission and event polling"
+        }
+        indexer = container "On-Chain Indexer" {
+            technology "Rust (Rocket)"
+            description "Event Sourcing: subscribes to blockchain logs, normalizes events, publishes to event bus as source of truth"
+        }
+        eventBus = container "Event Bus" {
+            technology "Apache Kafka 3.x"
+            description "Message Broker: decouples services via domain topics with at-least-once delivery, outbox pattern, schema registry"
+        }
+        readModel = database "Read Model (PostgreSQL)" {
+            technology "PostgreSQL 16, PgBouncer"
+            description "CQRS Read Side: denormalized tables optimized for queries, accounting reports, and API responses"
+        }
         
-        monitoring = container "Observability Stack" "Grafana + Prometheus + Tempo + Loki" "Metrics, distributed tracing, structured logging — aggregated health dashboards per bounded context"
+        monitoring = container "Observability Stack" {
+            technology "Grafana + Prometheus + Tempo + Loki"
+            description "Metrics, distributed tracing, structured logging — aggregated health dashboards per bounded context"
+        }
     }
 
     customer -> platform.webApp "Uses HTTPS"
