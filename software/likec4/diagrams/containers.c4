@@ -5,18 +5,19 @@ model {
     platform = softwareSystem "Plataforma Stablecoin Banking" {
         webApp = container "App Web" "Angular" "Portal web del cliente"
         mobileApp = container "App Movil" "React Native" "App movil del cliente"
-        apiGateway = container "API Gateway" "Kong" "Punto de entrada unico"
+        apiGateway = container "API Gateway" "Kong" "Punto de entrada unico [Facade pattern]"
 
-        coreAdapter = container "Adaptador Core Bancario" "Java" "Integracion con sistemas core legacy"
-        stablecoinEngine = container "Motor Stablecoin" "Rust/Go" "Orquestacion de pagos con stablecoins"
-        issuanceService = container "Servicio de Emision" "Go" "Mint/burn de stablecoins contra reservas"
-        reserveManager = container "Gestor de Reservas" "Rust" "Control de reservas 1:1 y generacion de informes"
-        complianceService = container "Servicio de Compliance" "Python" "KYC/AML, Travel Rule, sanciones"
-        walletService = container "Servicio de Wallets" "Go" "Gestion de billeteras blockchain"
-        notificationService = container "Servicio de Notificaciones" "Node.js" "Alertas y notificaciones"
-        blockchainNode = container "Nodo Blockchain" "Ethereum" "Conexion directa a la red"
-        indexer = container "Indexador On-Chain" "Rust" "Lectura de eventos blockchain"
-        database = container "Base de Datos" "PostgreSQL" "Almacenamiento de transacciones y contabilidad"
+        coreAdapter = container "Adaptador Core Bancario" "Java" "Anti-Corruption Layer: aísla el core legacy"
+        stablecoinEngine = container "Motor Stablecoin" "Rust/Go" "Process Manager / Saga: orquesta el ciclo de pago completo"
+        issuanceService = container "Servicio de Emision" "Go" "Mint/burn de stablecoins contra reservas [Factory pattern]"
+        reserveManager = container "Gestor de Reservas" "Rust" "Control de reservas 1:1 y generacion de informes de atestacion"
+        complianceService = container "Servicio de Compliance" "Python" "Off-chain compliance con auditoria on-chain"
+        walletService = container "Servicio de Wallets" "Go" "Gestion de claves y firmas de transacciones blockchain"
+        notificationService = container "Servicio de Notificaciones" "Node.js" "Alertas y notificaciones a los actores del sistema"
+        blockchainNode = container "Nodo Blockchain" "Ethereum" "Conexion directa a redes blockchain"
+        indexer = container "Indexador On-Chain" "Rust" "Event Sourcing: lee eventos de blockchain como fuente de verdad"
+        eventBus = container "Bus de Eventos" "Redis / Kafka" "Message Broker: comunicación asincrona entre servicios"
+        database = container "Base de Datos" "PostgreSQL" "CQRS Read Model: almacenamiento de transacciones y contabilidad"
     }
 
     customer -> platform.webApp "Usa"
@@ -27,21 +28,27 @@ model {
     platform.mobileApp -> platform.apiGateway "Consume APIs REST"
 
     platform.apiGateway -> platform.coreAdapter "Delega operaciones core"
-    platform.apiGateway -> platform.stablecoinEngine "Procesa pagos"
+    platform.apiGateway -> platform.stablecoinEngine "Inicia pago"
     platform.apiGateway -> platform.complianceService "Valida cumplimiento"
 
     platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
     platform.stablecoinEngine -> platform.walletService "Firma transaccion"
-    platform.stablecoinEngine -> platform.blockchainNode "Envia TX"
+    platform.stablecoinEngine -> platform.blockchainNode "Envia TX a blockchain"
+    platform.stablecoinEngine -> platform.database "Persiste operacion [CQRS command]"
+    platform.stablecoinEngine -> platform.eventBus "Publica eventos de dominio"
 
-    platform.issuanceService -> platform.reserveManager "Verifica reservas"
-    platform.blockchainNode -> platform.indexer "Genera eventos"
-    platform.indexer -> platform.database "Registra confirmaciones"
-    platform.stablecoinEngine -> platform.database "Persiste operacion"
+    platform.issuanceService -> platform.reserveManager "Verifica reservas 1:1"
+    platform.blockchainNode -> platform.indexer "Propaga bloques y eventos"
+    platform.indexer -> platform.eventBus "Publica confirmaciones on-chain"
+    platform.indexer -> platform.database "Sincroniza read model"
     platform.complianceService -> platform.database "Almacena auditoria"
+    platform.eventBus -> platform.notificationService "Dispara notificaciones"
+    platform.eventBus -> platform.complianceService "Activa analisis AML"
+    platform.eventBus -> platform.stablecoinEngine "Notifica confirmaciones"
 
-    platform.coreAdapter -> platform.database "Sincroniza contabilidad"
-    platform.stablecoinEngine -> platform.notificationService "Notifica estado"
+    platform.coreAdapter -> platform.database "Sincroniza contabilidad legacy"
+    platform.notificationService -> customer "Envia alertas"
+    platform.notificationService -> merchant "Envia notificaciones de liquidacion"
 }
 
 views {

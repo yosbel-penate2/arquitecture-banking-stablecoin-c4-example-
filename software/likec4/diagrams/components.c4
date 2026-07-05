@@ -8,62 +8,91 @@ model {
     }
 
     platform = softwareSystem "Plataforma Stablecoin Banking" {
-        stablecoinEngine = container "Motor Stablecoin" {
-            paymentOrchestrator = component "PaymentOrchestrator" "Orquesta el ciclo completo del pago"
-            fxProvider = component "FX Provider" "Tasas de cambio en tiempo real"
-            liquidityPool = component "Pool de Liquidez" "Gestiona pools on-chain"
-            onRampAdapter = component "On-Ramp Adapter" "Fiat -> Stablecoin (deposito)"
-            offRampAdapter = component "Off-Ramp Adapter" "Stablecoin -> Fiat (retiro)"
-            statusTracker = component "StatusTracker" "Monitoreo de confirmaciones on-chain"
+        stablecoinEngine = container "Motor Stablecoin" "Process Manager / Saga pattern" {
+            paymentOrchestrator = component "PaymentOrchestrator" "Process Manager: orquesta la saga de pago completa"
+            fxProvider = component "FX Provider" "Inbound Port: obtiene tasa de cambio EUR/USDC"
+            liquidityPool = component "Pool de Liquidez" "Outbound Port: gestiona pools on-chain AMM"
+            onRampAdapter = component "On-Ramp Adapter" "Outbound Port: adaptador fiat -> stablecoin"
+            offRampAdapter = component "Off-Ramp Adapter" "Inbound Port: adaptador stablecoin -> fiat"
+            blockchainAdapter = component "BlockchainAdapter" "Outbound Port: envia TX a blockchain"
+            statusTracker = component "StatusTracker" "Event Listener: monitorea confirmaciones on-chain"
+            sagaLogger = component "SagaLogger" "Compensating Transaction: registra cada step para rollback"
 
-            paymentOrchestrator -> fxProvider "Obtiene tasa EUR/USDC"
-            paymentOrchestrator -> liquidityPool "Verifica profundidad"
-            paymentOrchestrator -> onRampAdapter "Deposita fiat"
-            paymentOrchestrator -> offRampAdapter "Retira a fiat destino"
-            paymentOrchestrator -> statusTracker "Monitorea TX"
-            onRampAdapter -> statusTracker "Reporta deposito"
-            offRampAdapter -> statusTracker "Reporta retiro"
+            paymentOrchestrator -> sagaLogger "Registra step [Saga log]"
+            paymentOrchestrator -> fxProvider "Step 1: obtiene tasa"
+            paymentOrchestrator -> liquidityPool "Step 2: verifica liquidez"
+            paymentOrchestrator -> onRampAdapter "Step 3: deposita fiat"
+            paymentOrchestrator -> blockchainAdapter "Step 4: envia TX on-chain"
+            paymentOrchestrator -> statusTracker "Step 5: monitorea confirmacion"
+            paymentOrchestrator -> offRampAdapter "Step 6: retira a fiat destino"
+            onRampAdapter -> sagaLogger "Reporta deposito exitoso"
+            offRampAdapter -> sagaLogger "Reporta retiro exitoso"
+            statusTracker -> sagaLogger "Registra confirmacion blockchain"
+            statusTracker -> paymentOrchestrator "Callback: TX confirmada"
+            blockchainAdapter -> statusTracker "TX hash publicado"
         }
-        complianceService = container "Servicio de Compliance" {
-            identityVerifier = component "IdentityVerifier" "KYC onboarding"
-            amlScreener = component "AML Screener" "Analisis de riesgo transaccional"
-            travelRuleEngine = component "TravelRuleEngine" "Intercambio de datos VASP"
-            sanctionsChecker = component "SanctionsChecker" "Filtro OFAC/UE/UN"
-            auditLogger = component "AuditLogger" "Registro inmutable de auditoria"
+        complianceService = container "Servicio de Compliance" "Off-chain compliance + On-chain audit" {
+            identityVerifier = component "IdentityVerifier" "KYC onboarding [Customer due diligence]"
+            amlScreener = component "AML Screener" "Transaction Monitoring: analisis de riesgo en tiempo real"
+            travelRuleEngine = component "TravelRuleEngine" "VASP data exchange: intercambio de datos Travel Rule"
+            sanctionsChecker = component "SanctionsChecker" "Screening: filtro OFAC/UE/UN en cada transaccion"
+            auditLogger = component "AuditLogger" "On-chain Anchor: registro inmutable de auditoria [Blockchain notary]"
+            ruleEngine = component "RuleEngine" "Business Rules: motor de reglas de compliance configurables"
 
-            identityVerifier -> amlScreener "Valida identidad"
+            identityVerifier -> amlScreener "Inicia screening"
             amlScreener -> sanctionsChecker "Filtra sanciones"
-            amlScreener -> travelRuleEngine "Intercambia datos"
-            amlScreener -> auditLogger "Registra auditoria"
+            amlScreener -> ruleEngine "Evalua reglas de riesgo"
+            ruleEngine -> travelRuleEngine "Activa intercambio VASP"
+            amlScreener -> auditLogger "Registra resultado auditoria"
+            travelRuleEngine -> auditLogger "Ancla intercambio en blockchain"
+            sanctionsChecker -> auditLogger "Registra resultado screening"
         }
-        issuanceService = container "Servicio de Emision" {
-            mintController = component "MintController" "Acuna stablecoins contra reserva"
-            burnController = component "BurnController" "Quema stablecoins y libera reserva"
-            attestationProvider = component "AttestationProvider" "Genera informes de atestacion"
+        issuanceService = container "Servicio de Emision" "Factory pattern: mint/burn" {
+            mintController = component "MintController" "Factory: acuna stablecoins contra reserva"
+            burnController = component "BurnController" "Reverse Factory: quema stablecoins y libera reserva"
+            attestationProvider = component "AttestationProvider" "Genera informes de atestacion mensuales"
 
             mintController -> attestationProvider "Reporta emision"
             burnController -> attestationProvider "Reporta quema"
         }
-        database = container "Base de Datos" "PostgreSQL"
+        eventBus = container "Bus de Eventos" "Message Broker / Event-Driven" {
+            domainEvents = component "DomainEvents" "Topic: eventos de dominio del sistema"
+            blockchainEvents = component "BlockchainEvents" "Topic: confirmaciones y logs on-chain"
+            notificationDispatcher = component "NotificationDispatcher" "Consumer: dispara notificaciones"
+
+            domainEvents -> notificationDispatcher "Consume eventos de dominio"
+            blockchainEvents -> notificationDispatcher "Consume confirmaciones"
+        }
+        database = container "Base de Datos" "PostgreSQL [CQRS Read Model]"
     }
 
     customer -> platform.stablecoinEngine.paymentOrchestrator "Inicia pago en EUR/USD"
     merchant -> platform.stablecoinEngine.statusTracker "Consulta liquidacion"
     platform.stablecoinEngine -> platform.complianceService "Valida transaccion"
     platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
-    platform.stablecoinEngine -> platform.database "Persiste operacion"
-    platform.stablecoinEngine.statusTracker -> platform.database "Registra estado"
-    platform.issuanceService.mintController -> bankPartner.fiatAccount "Bloquea reserva"
+    platform.stablecoinEngine -> platform.eventBus "Publica DomainEvents"
+    platform.stablecoinEngine.blockchainAdapter -> platform.database "Persiste command log"
+    platform.stablecoinEngine.statusTracker -> platform.database "Registra estado confirmacion"
+    platform.issuanceService.mintController -> bankPartner.fiatAccount "Bloquea reserva 1:1"
     platform.issuanceService.burnController -> bankPartner.fiatAccount "Libera reserva"
     platform.complianceService.travelRuleEngine -> bankPartner "Intercambia datos VASP"
-    platform.complianceService.auditLogger -> platform.database "Persiste log auditoria"
-    platform.issuanceService.attestationProvider -> platform.database "Reportes de respaldo"
+    platform.complianceService.auditLogger -> platform.database "Ancla log de auditoria"
+    platform.issuanceService.attestationProvider -> platform.database "Almacena reportes de reservas"
+    platform.eventBus.blockchainEvents -> platform.stablecoinEngine.statusTracker "Notifica confirmacion TX"
+    platform.eventBus.domainEvents -> platform.complianceService.amlScreener "Activa analisis AML post-TX"
 }
 
 views {
     view components of platform.stablecoinEngine {
-        title "Componentes del Motor Stablecoin"
+        title "Componentes del Motor Stablecoin - Process Manager / Saga"
         include *
+        description "
+            El PaymentOrchestrator actua como Process Manager orquestando
+            la saga de pago en 6 pasos. Cada paso se registra en el SagaLogger
+            para permitir compensating transactions en caso de fallo.
+            Los adaptadores On-Ramp y Off-Ramp implementan el patron
+            Ports & Adapters (Hexagonal Architecture).
+        "
         style customer {
             color muted
         }
@@ -76,19 +105,33 @@ views {
         style platform.issuanceService {
             color muted
         }
+        style platform.eventBus {
+            color muted
+        }
     }
 
     view components of platform.complianceService {
-        title "Componentes del Servicio de Compliance"
+        title "Componentes del Compliance - Off-chain + On-chain Anchor"
         include *
+        description "
+            Cumplimiento normativo Off-chain con anclaje On-chain.
+            El RuleEngine evalua reglas configurables, el AML Screener
+            analiza en tiempo real, y el AuditLogger ancla cada
+            resultado en blockchain como notario inmutable.
+        "
         style platform.stablecoinEngine {
             color muted
         }
     }
 
     view components of platform.issuanceService {
-        title "Componentes del Servicio de Emision"
+        title "Componentes del Servicio de Emision - Factory pattern"
         include *
+        description "
+            MintController y BurnController implementan el patron Factory,
+            creando o destruyendo stablecoins contra reserva 1:1.
+            AttestationProvider genera los reportes de atestacion mensuales.
+        "
         style bankPartner {
             color muted
         }
