@@ -81,14 +81,40 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages via gh CLI
+        id: deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Fetching artifact metadata..."
+          artifacts=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts")
+          artifact_id=$(echo "$artifacts" | jq '.artifacts[] | select(.name=="github-pages") | .id')
+          echo "Found artifact ID: $artifact_id"
 
-      - name: Retry deploy once on transient failure
-        if: failure() && steps.deployment.conclusion == 'failure'
-        uses: actions/deploy-pages@v4
+          echo "Creating Pages deployment..."
+          deployment=$(gh api \
+            --method POST \
+            /repos/${{ github.repository }}/pages/deployments \
+            -f artifact_id="$artifact_id" \
+            -f pages_build_version="${{ github.sha }}")
+          status_url=$(echo "$deployment" | jq -r '.status_url')
+          deploy_url=$(echo "$deployment" | jq -r '.page_url // .html_url // empty')
+          echo "url=$deploy_url" >> "$GITHUB_OUTPUT"
+
+          echo "Polling deployment status..."
+          for i in $(seq 1 60); do
+            sleep 10
+            status=$(gh api "$status_url" --jq '.status')
+            echo "Attempt $i: $status"
+            case "$status" in
+              deployed) echo "Deployment succeeded!"; exit 0 ;;
+              failed)   echo "Deployment permanently failed"; exit 1 ;;
+              * )       ;;
+            esac
+          done
+          echo "Timed out waiting for deployment"
+          exit 1
