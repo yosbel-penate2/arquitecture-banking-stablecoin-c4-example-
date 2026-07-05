@@ -1,8 +1,5 @@
 model {
-    customer = person "Customer"
-    merchant = person "Merchant"
-
-    bankPartner = softwareSystem "Banking Partner" {
+    extend bankPs {
         fiatAccount = container "Fiat Omnibus Account" {
             technology "SWIFT / ACH"
             description "Multi-currency omnibus for 1:1 reserve backing"
@@ -12,9 +9,8 @@ model {
             description "Interbank settlement and FX conversion"
         }
     }
-    blockchainNetwork = softwareSystem "Ethereum / Solana" "On-chain settlement and audit log"
 
-    platform = softwareSystem "Stablecoin Banking Platform" {
+    extend platform {
         stablecoinEngine = container "Stablecoin Engine" {
             technology "Rust (Axum) / Go"
             description "Process Manager / Saga pattern + Hexagonal Architecture"
@@ -94,19 +90,19 @@ model {
     complianceService -> stablecoinEngine "Returns validation result (allow/block)"
     stablecoinEngine -> issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
     issuanceService -> stablecoinEngine "Returns mint/burn result (success/failure)"
-    stablecoinEngine -> blockchainNetwork "Submits TX via BlockchainAdapter [CQRS Command]"
+    stablecoinEngine -> blockchain "Submits TX via BlockchainAdapter [CQRS Command]"
     stablecoinEngine -> eventBus "Publishes PaymentStarted / PaymentCompleted (outbox pattern)"
     stablecoinEngine -> readModel "Persists command log (via BlockchainAdapter) / Records confirmation status (via StatusTracker)"
-    complianceService -> blockchainNetwork "Anchors compliance hash (via AuditLogger) [Blockchain Notary]"
+    complianceService -> blockchain "Anchors compliance hash (via AuditLogger) [Blockchain Notary]"
 
     customer -> complianceService "Submits identity documents for KYC"
 
-    issuanceService -> bankPartner.fiatAccount "ACH/SEPA: locks/releases 1:1 fiat reserve (via MintController / BurnController)"
-    bankPartner -> issuanceService "Confirms fiat reserve lock/unlock"
+    issuanceService -> bankPs.fiatAccount "ACH/SEPA: locks/releases 1:1 fiat reserve (via MintController / BurnController)"
+    bankPs -> issuanceService "Confirms fiat reserve lock/unlock"
 
-    blockchainNetwork -> stablecoinEngine "Emits TX confirmation events (via StatusTracker)"
+    blockchain -> stablecoinEngine "Emits TX confirmation events (via StatusTracker)"
 
-    complianceService -> bankPartner "Sends/receives VASP Travel Rule data (via TravelRuleEngine)"
+    complianceService -> bankPs "Sends/receives VASP Travel Rule data (via TravelRuleEngine)"
     issuanceService -> readModel "Stores reserve attestation reports (via AttestationProvider)"
     eventBus -> stablecoinEngine "Notifies TXConfirmed / TXFailed (via BlockchainEvents -> StatusTracker)"
     eventBus -> complianceService "Triggers post-TX AML analysis (via DomainEvents -> AMLScreener)"
@@ -178,13 +174,13 @@ views {
             external accounting firm — essential for regulatory compliance
             and off-chain attestation.
         """
-        style bankPartner {
+        style bankPs {
             color muted
         }
         style readModel {
             color muted
         }
-        style blockchainNetwork {
+        style blockchain {
             color muted
         }
     }
