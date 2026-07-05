@@ -15,13 +15,13 @@ views {
     view deployment of platform {
         title "Deployment Diagram - AWS EKS"
         include *
-        description "
+        description """
             All containers run in AWS eu-west-1 on EKS v1.30 with HPA and
             multi-AZ redundancy. PostgreSQL RDS provides the CQRS Read Model
             with a read replica for reporting. MSK Kafka 3.x handles async
             messaging. Observability is aggregated via Grafana / Prometheus /
             Tempo / Loki. Blockchain RPC endpoints are provided by QuickNode
             and Alchemy.
-        "
+        """
     }
 }
