@@ -36,19 +36,26 @@ model {
     platform.apiGateway -> platform.stablecoinEngine "POST /payments [Process Manager trigger]"
     platform.apiGateway -> platform.complianceService "POST /compliance/validate"
 
+    platform.issuanceService -> platform.stablecoinEngine "Returns mint/burn result (success/failure)"
     platform.stablecoinEngine -> platform.issuanceService "GRPC: request mint/burn"
     platform.stablecoinEngine -> platform.walletService "GRPC: sign and broadcast TX"
+    platform.walletService -> platform.stablecoinEngine "Returns signed TX hash"
     platform.stablecoinEngine -> platform.blockchainNode "JSON-RPC: submit TX"
     platform.stablecoinEngine -> blockchain "Submits signed TX [CQRS Command]"
     platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted, PaymentCompleted events"
 
     platform.issuanceService -> platform.reserveManager "GRPC: verify 1:1 reserves"
+    platform.reserveManager -> platform.issuanceService "Returns reserve attestation status"
     platform.issuanceService -> bankPs "ACH/SEPA: lock/release fiat reserves"
+    bankPs -> platform.issuanceService "Confirms reserve lock/release"
 
+    blockchain -> platform.indexer "Emits blocks and logs [Event Sourcing]"
     platform.blockchainNode -> platform.indexer "Streams new blocks and logs"
     platform.indexer -> platform.eventBus "Publishes TXConfirmed, TransferDetected events"
+    platform.apiGateway -> platform.readModel "Queries read model for API responses"
     platform.indexer -> platform.readModel "Syncs read model [CQRS Projection]"
 
+    platform.complianceService -> platform.stablecoinEngine "Returns validation result (allow/block)"
     platform.complianceService -> platform.readModel "Stores audit trail"
     platform.eventBus -> platform.notificationService "Consumes NotificationRequired event"
     platform.eventBus -> platform.complianceService "Triggers post-TX AML analysis"

@@ -30,6 +30,9 @@ model {
             offRampAdapter -> sagaLogger "Reports fiat withdrawal result"
             blockchainAdapter -> sagaLogger "Reports TX hash"
             statusTracker -> sagaLogger "Records blockchain confirmation"
+            fxProvider -> paymentOrchestrator "Returns EUR/USDC rate"
+            liquidityPool -> paymentOrchestrator "Returns liquidity depth"
+            sagaLogger -> paymentOrchestrator "Triggers compensating transaction on failure"
             statusTracker -> paymentOrchestrator "Callback: TX confirmed / timeout"
             blockchainAdapter -> statusTracker "TX hash published to Kafka"
         }
@@ -72,14 +75,22 @@ model {
     merchant -> platform.stablecoinEngine "Queries settlement status via API"
 
     platform.stablecoinEngine -> platform.complianceService "gRPC: validate transaction before execution"
+    platform.complianceService -> platform.stablecoinEngine "Returns validation result (allow/block)"
     platform.stablecoinEngine -> platform.issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
+    platform.issuanceService -> platform.stablecoinEngine "Returns mint/burn result (success/failure)"
     platform.stablecoinEngine.blockchainAdapter -> blockchainNetwork "Submits TX to Ethereum/Solana [CQRS Command]"
     platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted / PaymentCompleted (outbox pattern)"
     platform.stablecoinEngine.blockchainAdapter -> platform.readModel "Persists command log"
     platform.stablecoinEngine.statusTracker -> platform.readModel "Records confirmation status"
 
+    customer -> platform.complianceService "Submits identity documents for KYC"
+
     platform.issuanceService.mintController -> bankPartner.fiatAccount "ACH: locks 1:1 fiat reserve before mint"
     platform.issuanceService.burnController -> bankPartner.fiatAccount "SEPA: releases fiat reserve after burn"
+    bankPartner -> platform.issuanceService "Confirms fiat reserve lock/unlock"
+
+    blockchainNetwork -> platform.stablecoinEngine "Emits TX confirmation events"
+
     platform.complianceService.travelRuleEngine -> bankPartner "Sends / receives VASP Travel Rule data"
     platform.complianceService.auditLogger -> blockchainNetwork "Anchors compliance hash on-chain [Blockchain Notary]"
     platform.issuanceService.attestationProvider -> platform.readModel "Stores reserve attestation reports"
