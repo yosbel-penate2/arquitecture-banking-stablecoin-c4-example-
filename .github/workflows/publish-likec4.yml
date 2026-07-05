@@ -40,6 +40,28 @@ jobs:
           output: site
           base: ${{ env.SITE_BASE_PATH }}
 
+      - name: Diagnostic — show site contents
+        run: |
+          echo "=== site contents ==="
+          ls -la site || true
+          du -sh site || true
+          find site -maxdepth 3 -type f -print | sed -n '1,200p'
+
+      - name: Ensure index exists for Pages
+        run: |
+          if [ ! -f site/index.html ] && [ -f site/README.md ]; then
+            echo "No index.html found; moving README.md -> index.md"
+            mv site/README.md site/index.md
+          fi
+          if [ ! -f site/index.html ] && [ ! -f site/index.md ]; then
+            echo "Creating minimal index.html"
+            mkdir -p site
+            cat > site/index.html <<'EOF'
+            <!doctype html><meta charset="utf-8"><title>Site</title><h1>Deployed site</h1>
+            <p>This is a minimal index created by CI to ensure GitHub Pages can deploy.</p>
+            EOF
+          fi
+
       - name: Fix permissions on site
         run: |
           mkdir -p site
