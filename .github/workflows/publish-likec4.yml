@@ -88,3 +88,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Retry deploy once on transient failure
+        if: failure() && steps.deployment.conclusion == 'failure'
+        uses: actions/deploy-pages@v4
