@@ -62,59 +62,59 @@ model {
             technology "PostgreSQL 16, PgBouncer"
             description "CQRS Read Side: denormalized tables optimized for queries, accounting reports, and API responses"
         }
-        
+
         monitoring = container "Observability Stack" {
             technology "Grafana + Prometheus + Tempo + Loki"
             description "Metrics, distributed tracing, structured logging — aggregated health dashboards per bounded context"
         }
     }
 
-    customer -> platform.webApp "Uses HTTPS"
-    customer -> platform.mobileApp "Uses HTTPS"
+    customer -> webApp "Uses HTTPS"
+    customer -> mobileApp "Uses HTTPS"
 
-    merchant -> platform.apiGateway "Queries HTTPS"
+    merchant -> apiGateway "Queries HTTPS"
 
-    platform.webApp -> platform.apiGateway "Consumes REST APIs"
-    platform.mobileApp -> platform.apiGateway "Consumes REST APIs"
+    webApp -> apiGateway "Consumes REST APIs"
+    mobileApp -> apiGateway "Consumes REST APIs"
 
-    platform.apiGateway -> platform.coreAdapter "Delegates core sync [Anti-Corruption Layer]"
-    platform.apiGateway -> platform.stablecoinEngine "POST /payments [Process Manager trigger]"
-    platform.apiGateway -> platform.complianceService "POST /compliance/validate"
+    apiGateway -> coreAdapter "Delegates core sync [Anti-Corruption Layer]"
+    apiGateway -> stablecoinEngine "POST /payments [Process Manager trigger]"
+    apiGateway -> complianceService "POST /compliance/validate"
 
-    platform.issuanceService -> platform.stablecoinEngine "Returns mint/burn result (success/failure)"
-    platform.stablecoinEngine -> platform.issuanceService "GRPC: request mint/burn"
-    platform.stablecoinEngine -> platform.walletService "GRPC: sign and broadcast TX"
-    platform.walletService -> platform.stablecoinEngine "Returns signed TX hash"
-    platform.stablecoinEngine -> platform.blockchainNode "JSON-RPC: submit TX"
-    platform.stablecoinEngine -> blockchain "Submits signed TX [CQRS Command]"
-    platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted, PaymentCompleted events"
+    issuanceService -> stablecoinEngine "Returns mint/burn result (success/failure)"
+    stablecoinEngine -> issuanceService "GRPC: request mint/burn"
+    stablecoinEngine -> walletService "GRPC: sign and broadcast TX"
+    walletService -> stablecoinEngine "Returns signed TX hash"
+    stablecoinEngine -> blockchainNode "JSON-RPC: submit TX"
+    stablecoinEngine -> blockchain "Submits signed TX [CQRS Command]"
+    stablecoinEngine -> eventBus "Publishes PaymentStarted, PaymentCompleted events"
 
-    platform.issuanceService -> platform.reserveManager "GRPC: verify 1:1 reserves"
-    platform.reserveManager -> platform.issuanceService "Returns reserve attestation status"
-    platform.issuanceService -> bankPs "ACH/SEPA: lock/release fiat reserves"
-    bankPs -> platform.issuanceService "Confirms reserve lock/release"
+    issuanceService -> reserveManager "GRPC: verify 1:1 reserves"
+    reserveManager -> issuanceService "Returns reserve attestation status"
+    issuanceService -> bankPs "ACH/SEPA: lock/release fiat reserves"
+    bankPs -> issuanceService "Confirms reserve lock/release"
 
-    blockchain -> platform.indexer "Emits blocks and logs [Event Sourcing]"
-    platform.blockchainNode -> platform.indexer "Streams new blocks and logs"
-    platform.indexer -> platform.eventBus "Publishes TXConfirmed, TransferDetected events"
-    platform.apiGateway -> platform.readModel "Queries read model for API responses"
-    platform.indexer -> platform.readModel "Syncs read model [CQRS Projection]"
+    blockchain -> indexer "Emits blocks and logs [Event Sourcing]"
+    blockchainNode -> indexer "Streams new blocks and logs"
+    indexer -> eventBus "Publishes TXConfirmed, TransferDetected events"
+    apiGateway -> readModel "Queries read model for API responses"
+    indexer -> readModel "Syncs read model [CQRS Projection]"
 
-    platform.complianceService -> platform.stablecoinEngine "Returns validation result (allow/block)"
-    platform.complianceService -> platform.readModel "Stores audit trail"
-    platform.eventBus -> platform.notificationService "Consumes NotificationRequired event"
-    platform.eventBus -> platform.complianceService "Triggers post-TX AML analysis"
-    platform.eventBus -> platform.stablecoinEngine "Notifies TX confirmation"
+    complianceService -> stablecoinEngine "Returns validation result (allow/block)"
+    complianceService -> readModel "Stores audit trail"
+    eventBus -> notificationService "Consumes NotificationRequired event"
+    eventBus -> complianceService "Triggers post-TX AML analysis"
+    eventBus -> stablecoinEngine "Notifies TX confirmation"
 
-    platform.coreAdapter -> platform.readModel "Syncs legacy accounting"
-    platform.notificationService -> customer "Sends email/SMS/push notifications"
-    platform.notificationService -> merchant "Sends settlement webhooks"
+    coreAdapter -> readModel "Syncs legacy accounting"
+    notificationService -> customer "Sends email/SMS/push notifications"
+    notificationService -> merchant "Sends settlement webhooks"
 
-    platform.monitoring -> platform.stablecoinEngine "Collects metrics and traces"
-    platform.monitoring -> platform.complianceService "Collects metrics and traces"
-    platform.monitoring -> platform.issuanceService "Collects metrics and traces"
-    platform.monitoring -> platform.eventBus "Collects consumer lag and throughput"
-    platform.monitoring -> platform.indexer "Collects indexing latency"
+    monitoring -> stablecoinEngine "Collects metrics and traces"
+    monitoring -> complianceService "Collects metrics and traces"
+    monitoring -> issuanceService "Collects metrics and traces"
+    monitoring -> eventBus "Collects consumer lag and throughput"
+    monitoring -> indexer "Collects indexing latency"
 }
 
 views {
@@ -135,13 +135,13 @@ views {
         style merchant {
             color muted
         }
-        style platform.webApp {
+        style webApp {
             color secondary
         }
-        style platform.mobileApp {
+        style mobileApp {
             color secondary
         }
-        style platform.monitoring {
+        style monitoring {
             color muted
         }
     }

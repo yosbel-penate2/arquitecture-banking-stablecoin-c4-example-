@@ -87,43 +87,43 @@ model {
         }
     }
 
-    customer -> platform.stablecoinEngine "Initiates payment in EUR/USD via web/mobile"
-    merchant -> platform.stablecoinEngine "Queries settlement status via API"
+    customer -> stablecoinEngine "Initiates payment in EUR/USD via web/mobile"
+    merchant -> stablecoinEngine "Queries settlement status via API"
 
-    platform.stablecoinEngine -> platform.complianceService "gRPC: validate transaction before execution"
-    platform.complianceService -> platform.stablecoinEngine "Returns validation result (allow/block)"
-    platform.stablecoinEngine -> platform.issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
-    platform.issuanceService -> platform.stablecoinEngine "Returns mint/burn result (success/failure)"
-    platform.stablecoinEngine -> blockchainNetwork "Submits TX via BlockchainAdapter [CQRS Command]"
-    platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted / PaymentCompleted (outbox pattern)"
-    platform.stablecoinEngine -> platform.readModel "Persists command log (via BlockchainAdapter) / Records confirmation status (via StatusTracker)"
-    platform.complianceService -> blockchainNetwork "Anchors compliance hash (via AuditLogger) [Blockchain Notary]"
+    stablecoinEngine -> complianceService "gRPC: validate transaction before execution"
+    complianceService -> stablecoinEngine "Returns validation result (allow/block)"
+    stablecoinEngine -> issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
+    issuanceService -> stablecoinEngine "Returns mint/burn result (success/failure)"
+    stablecoinEngine -> blockchainNetwork "Submits TX via BlockchainAdapter [CQRS Command]"
+    stablecoinEngine -> eventBus "Publishes PaymentStarted / PaymentCompleted (outbox pattern)"
+    stablecoinEngine -> readModel "Persists command log (via BlockchainAdapter) / Records confirmation status (via StatusTracker)"
+    complianceService -> blockchainNetwork "Anchors compliance hash (via AuditLogger) [Blockchain Notary]"
 
-    customer -> platform.complianceService "Submits identity documents for KYC"
+    customer -> complianceService "Submits identity documents for KYC"
 
-    platform.issuanceService -> bankPartner.fiatAccount "ACH/SEPA: locks/releases 1:1 fiat reserve (via MintController / BurnController)"
-    bankPartner -> platform.issuanceService "Confirms fiat reserve lock/unlock"
+    issuanceService -> bankPartner.fiatAccount "ACH/SEPA: locks/releases 1:1 fiat reserve (via MintController / BurnController)"
+    bankPartner -> issuanceService "Confirms fiat reserve lock/unlock"
 
-    blockchainNetwork -> platform.stablecoinEngine "Emits TX confirmation events (via StatusTracker)"
+    blockchainNetwork -> stablecoinEngine "Emits TX confirmation events (via StatusTracker)"
 
-    platform.complianceService -> bankPartner "Sends/receives VASP Travel Rule data (via TravelRuleEngine)"
-    platform.issuanceService -> platform.readModel "Stores reserve attestation reports (via AttestationProvider)"
-    platform.eventBus -> platform.stablecoinEngine "Notifies TXConfirmed / TXFailed (via BlockchainEvents -> StatusTracker)"
-    platform.eventBus -> platform.complianceService "Triggers post-TX AML analysis (via DomainEvents -> AMLScreener)"
+    complianceService -> bankPartner "Sends/receives VASP Travel Rule data (via TravelRuleEngine)"
+    issuanceService -> readModel "Stores reserve attestation reports (via AttestationProvider)"
+    eventBus -> stablecoinEngine "Notifies TXConfirmed / TXFailed (via BlockchainEvents -> StatusTracker)"
+    eventBus -> complianceService "Triggers post-TX AML analysis (via DomainEvents -> AMLScreener)"
 }
 
 views {
-    view stablecoinEngineComponents of platform.stablecoinEngine {
+    view stablecoinEngineComponents of stablecoinEngine {
         title "Stablecoin Engine - Process Manager / Saga + Hexagonal Architecture"
         include *
         description """
             Bounded Context: Payment Orchestration
-            
+
             The PaymentOrchestrator is a Process Manager coordinating a 6-step saga.
             Each step is recorded in the SagaLogger for compensating transactions.
             Adapters (On-Ramp, Off-Ramp, Blockchain) are Hexagonal Architecture ports
             that isolate the engine from external technology.
-            
+
             Failure path: if any step fails, SagaLogger emits PaymentFailed and
             triggers compensating transactions (e.g., reverse mint, release fiat).
         """
@@ -133,47 +133,47 @@ views {
         style merchant {
             color muted
         }
-        style platform.complianceService {
+        style complianceService {
             color muted
         }
-        style platform.issuanceService {
+        style issuanceService {
             color muted
         }
-        style platform.eventBus {
+        style eventBus {
             color muted
         }
     }
 
-    view complianceComponents of platform.complianceService {
+    view complianceComponents of complianceService {
         title "Compliance Service - Off-chain + On-chain Anchor"
         include *
         description """
             Bounded Context: Compliance & Identity
-            
+
             Compliance logic runs off-chain (Python/FastAPI) for performance.
             AuditLogger anchors every check result on Ethereum as an immutable
             hash — satisfying regulatory audit requirements without exposing
             PII on-chain.
-            
+
             RuleEngine supports configurable rules per jurisdiction.
         """
-        style platform.stablecoinEngine {
+        style stablecoinEngine {
             color muted
         }
-        style platform.issuanceService {
+        style issuanceService {
             color muted
         }
     }
 
-    view issuanceComponents of platform.issuanceService {
+    view issuanceComponents of issuanceService {
         title "Issuance Service - Factory Pattern + Reserve Attestation"
         include *
         description """
             Bounded Context: Token Issuance & Reserve Management
-            
+
             MintController and BurnController are Factory implementations
             that create/destroy ERC-20/SPL tokens against 1:1 fiat reserves.
-            
+
             AttestationProvider generates monthly reports verified by an
             external accounting firm — essential for regulatory compliance
             and off-chain attestation.
@@ -181,7 +181,7 @@ views {
         style bankPartner {
             color muted
         }
-        style platform.readModel {
+        style readModel {
             color muted
         }
         style blockchainNetwork {
