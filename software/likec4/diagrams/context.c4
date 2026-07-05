@@ -24,7 +24,6 @@ model {
 views {
     view context of paymentGateway {
         title "Context Diagram - Stablecoin Payment Gateway"
-        include *
         description """
             The Payment Gateway sits between end users (Customer, Merchant) and
             external systems (Blockchain Networks, Banking PSP, Custody Provider).
@@ -32,6 +31,7 @@ views {
             and reserve attestation. Relationships show the flow of payments,
             fiat, regulatory data, and signing requests.
         """
+        include *
         style paymentGateway {
             color primary
         }
