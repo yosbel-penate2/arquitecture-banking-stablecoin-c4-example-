@@ -34,12 +34,12 @@ specification {
     }
     deploymentNode node {
         style {
-            shape roundedBox
+            shape rectangle
         }
     }
     deploymentNode infrastructureNode {
         style {
-            shape roundedBox
+            shape rectangle
         }
     }
 }
