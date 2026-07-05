@@ -1,7 +1,4 @@
 model {
-    customer = person "Customer"
-    merchant = person "Merchant"
-    blockchain = softwareSystem "Blockchain Networks" "Ethereum, Solana, Polygon — on-chain settlement layer"
     bankPs = softwareSystem "Banking Partner / PSP" "Fiat omnibus accounts, SWIFT, FX conversion"
 
     platform = softwareSystem "Stablecoin Banking Platform" {
