@@ -1,97 +1,97 @@
 model {
-    customer = person "Cliente"
-    merchant = person "Comercio"
+    customer = person "Customer"
+    merchant = person "Merchant"
 
-    bankPartner = softwareSystem "Banco Socio" {
-        fiatAccount = container "Cuenta Fiduciaria" "Cuenta omnibus para reservas 1:1"
-        swiftGateway = container "Conexion SWIFT" "Liquidacion interbancaria"
+    bankPartner = softwareSystem "Banking Partner" {
+        fiatAccount = container "Fiat Account" "Omnibus account for 1:1 reserves"
+        swiftGateway = container "SWIFT Gateway" "Interbank settlement"
     }
 
-    platform = softwareSystem "Plataforma Stablecoin Banking" {
-        stablecoinEngine = container "Motor Stablecoin" "Process Manager / Saga pattern" {
-            paymentOrchestrator = component "PaymentOrchestrator" "Process Manager: orquesta la saga de pago completa"
-            fxProvider = component "FX Provider" "Inbound Port: obtiene tasa de cambio EUR/USDC"
-            liquidityPool = component "Pool de Liquidez" "Outbound Port: gestiona pools on-chain AMM"
-            onRampAdapter = component "On-Ramp Adapter" "Outbound Port: adaptador fiat -> stablecoin"
-            offRampAdapter = component "Off-Ramp Adapter" "Inbound Port: adaptador stablecoin -> fiat"
-            blockchainAdapter = component "BlockchainAdapter" "Outbound Port: envia TX a blockchain"
-            statusTracker = component "StatusTracker" "Event Listener: monitorea confirmaciones on-chain"
-            sagaLogger = component "SagaLogger" "Compensating Transaction: registra cada step para rollback"
+    platform = softwareSystem "Stablecoin Banking Platform" {
+        stablecoinEngine = container "Stablecoin Engine" "Process Manager / Saga pattern" {
+            paymentOrchestrator = component "PaymentOrchestrator" "Process Manager: orchestrates the complete payment saga"
+            fxProvider = component "FX Provider" "Inbound Port: fetches EUR/USDC exchange rate"
+            liquidityPool = component "Liquidity Pool" "Outbound Port: manages on-chain AMM pools"
+            onRampAdapter = component "On-Ramp Adapter" "Outbound Port: fiat -> stablecoin adapter"
+            offRampAdapter = component "Off-Ramp Adapter" "Inbound Port: stablecoin -> fiat adapter"
+            blockchainAdapter = component "BlockchainAdapter" "Outbound Port: sends TX to blockchain"
+            statusTracker = component "StatusTracker" "Event Listener: monitors on-chain confirmations"
+            sagaLogger = component "SagaLogger" "Compensating Transaction: records every step for rollback"
 
-            paymentOrchestrator -> sagaLogger "Registra step [Saga log]"
-            paymentOrchestrator -> fxProvider "Step 1: obtiene tasa"
-            paymentOrchestrator -> liquidityPool "Step 2: verifica liquidez"
-            paymentOrchestrator -> onRampAdapter "Step 3: deposita fiat"
-            paymentOrchestrator -> blockchainAdapter "Step 4: envia TX on-chain"
-            paymentOrchestrator -> statusTracker "Step 5: monitorea confirmacion"
-            paymentOrchestrator -> offRampAdapter "Step 6: retira a fiat destino"
-            onRampAdapter -> sagaLogger "Reporta deposito exitoso"
-            offRampAdapter -> sagaLogger "Reporta retiro exitoso"
-            statusTracker -> sagaLogger "Registra confirmacion blockchain"
-            statusTracker -> paymentOrchestrator "Callback: TX confirmada"
-            blockchainAdapter -> statusTracker "TX hash publicado"
+            paymentOrchestrator -> sagaLogger "Logs step [Saga log]"
+            paymentOrchestrator -> fxProvider "Step 1: fetches rate"
+            paymentOrchestrator -> liquidityPool "Step 2: checks liquidity"
+            paymentOrchestrator -> onRampAdapter "Step 3: deposits fiat"
+            paymentOrchestrator -> blockchainAdapter "Step 4: sends TX on-chain"
+            paymentOrchestrator -> statusTracker "Step 5: monitors confirmation"
+            paymentOrchestrator -> offRampAdapter "Step 6: withdraws to fiat"
+            onRampAdapter -> sagaLogger "Reports successful deposit"
+            offRampAdapter -> sagaLogger "Reports successful withdrawal"
+            statusTracker -> sagaLogger "Records blockchain confirmation"
+            statusTracker -> paymentOrchestrator "Callback: TX confirmed"
+            blockchainAdapter -> statusTracker "TX hash published"
         }
-        complianceService = container "Servicio de Compliance" "Off-chain compliance + On-chain audit" {
+        complianceService = container "Compliance Service" "Off-chain compliance + On-chain audit" {
             identityVerifier = component "IdentityVerifier" "KYC onboarding [Customer due diligence]"
-            amlScreener = component "AML Screener" "Transaction Monitoring: analisis de riesgo en tiempo real"
-            travelRuleEngine = component "TravelRuleEngine" "VASP data exchange: intercambio de datos Travel Rule"
-            sanctionsChecker = component "SanctionsChecker" "Screening: filtro OFAC/UE/UN en cada transaccion"
-            auditLogger = component "AuditLogger" "On-chain Anchor: registro inmutable de auditoria [Blockchain notary]"
-            ruleEngine = component "RuleEngine" "Business Rules: motor de reglas de compliance configurables"
+            amlScreener = component "AML Screener" "Transaction Monitoring: real-time risk analysis"
+            travelRuleEngine = component "TravelRuleEngine" "VASP data exchange: Travel Rule data sharing"
+            sanctionsChecker = component "SanctionsChecker" "Screening: OFAC/EU/UN filter on every transaction"
+            auditLogger = component "AuditLogger" "On-chain Anchor: immutable audit record [Blockchain notary]"
+            ruleEngine = component "RuleEngine" "Business Rules: configurable compliance rule engine"
 
-            identityVerifier -> amlScreener "Inicia screening"
-            amlScreener -> sanctionsChecker "Filtra sanciones"
-            amlScreener -> ruleEngine "Evalua reglas de riesgo"
-            ruleEngine -> travelRuleEngine "Activa intercambio VASP"
-            amlScreener -> auditLogger "Registra resultado auditoria"
-            travelRuleEngine -> auditLogger "Ancla intercambio en blockchain"
-            sanctionsChecker -> auditLogger "Registra resultado screening"
+            identityVerifier -> amlScreener "Initiates screening"
+            amlScreener -> sanctionsChecker "Filters sanctions"
+            amlScreener -> ruleEngine "Evaluates risk rules"
+            ruleEngine -> travelRuleEngine "Activates VASP exchange"
+            amlScreener -> auditLogger "Records audit result"
+            travelRuleEngine -> auditLogger "Anchors exchange on blockchain"
+            sanctionsChecker -> auditLogger "Records screening result"
         }
-        issuanceService = container "Servicio de Emision" "Factory pattern: mint/burn" {
-            mintController = component "MintController" "Factory: acuna stablecoins contra reserva"
-            burnController = component "BurnController" "Reverse Factory: quema stablecoins y libera reserva"
-            attestationProvider = component "AttestationProvider" "Genera informes de atestacion mensuales"
+        issuanceService = container "Issuance Service" "Factory pattern: mint/burn" {
+            mintController = component "MintController" "Factory: mints stablecoins against reserve"
+            burnController = component "BurnController" "Reverse Factory: burns stablecoins and releases reserve"
+            attestationProvider = component "AttestationProvider" "Generates monthly attestation reports"
 
-            mintController -> attestationProvider "Reporta emision"
-            burnController -> attestationProvider "Reporta quema"
+            mintController -> attestationProvider "Reports issuance"
+            burnController -> attestationProvider "Reports burn"
         }
-        eventBus = container "Bus de Eventos" "Message Broker / Event-Driven" {
-            domainEvents = component "DomainEvents" "Topic: eventos de dominio del sistema"
-            blockchainEvents = component "BlockchainEvents" "Topic: confirmaciones y logs on-chain"
-            notificationDispatcher = component "NotificationDispatcher" "Consumer: dispara notificaciones"
+        eventBus = container "Event Bus" "Message Broker / Event-Driven" {
+            domainEvents = component "DomainEvents" "Topic: system domain events"
+            blockchainEvents = component "BlockchainEvents" "Topic: on-chain confirmations and logs"
+            notificationDispatcher = component "NotificationDispatcher" "Consumer: dispatches notifications"
 
-            domainEvents -> notificationDispatcher "Consume eventos de dominio"
-            blockchainEvents -> notificationDispatcher "Consume confirmaciones"
+            domainEvents -> notificationDispatcher "Consumes domain events"
+            blockchainEvents -> notificationDispatcher "Consumes confirmations"
         }
-        database = container "Base de Datos" "PostgreSQL [CQRS Read Model]"
+        database = container "Database" "PostgreSQL [CQRS Read Model]"
     }
 
-    customer -> platform.stablecoinEngine.paymentOrchestrator "Inicia pago en EUR/USD"
-    merchant -> platform.stablecoinEngine.statusTracker "Consulta liquidacion"
-    platform.stablecoinEngine -> platform.complianceService "Valida transaccion"
-    platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
-    platform.stablecoinEngine -> platform.eventBus "Publica DomainEvents"
-    platform.stablecoinEngine.blockchainAdapter -> platform.database "Persiste command log"
-    platform.stablecoinEngine.statusTracker -> platform.database "Registra estado confirmacion"
-    platform.issuanceService.mintController -> bankPartner.fiatAccount "Bloquea reserva 1:1"
-    platform.issuanceService.burnController -> bankPartner.fiatAccount "Libera reserva"
-    platform.complianceService.travelRuleEngine -> bankPartner "Intercambia datos VASP"
-    platform.complianceService.auditLogger -> platform.database "Ancla log de auditoria"
-    platform.issuanceService.attestationProvider -> platform.database "Almacena reportes de reservas"
-    platform.eventBus.blockchainEvents -> platform.stablecoinEngine.statusTracker "Notifica confirmacion TX"
-    platform.eventBus.domainEvents -> platform.complianceService.amlScreener "Activa analisis AML post-TX"
+    customer -> platform.stablecoinEngine.paymentOrchestrator "Initiates payment in EUR/USD"
+    merchant -> platform.stablecoinEngine.statusTracker "Checks settlement status"
+    platform.stablecoinEngine -> platform.complianceService "Validates transaction"
+    platform.stablecoinEngine -> platform.issuanceService "Requests mint/burn"
+    platform.stablecoinEngine -> platform.eventBus "Publishes DomainEvents"
+    platform.stablecoinEngine.blockchainAdapter -> platform.database "Persists command log"
+    platform.stablecoinEngine.statusTracker -> platform.database "Records confirmation status"
+    platform.issuanceService.mintController -> bankPartner.fiatAccount "Locks 1:1 reserve"
+    platform.issuanceService.burnController -> bankPartner.fiatAccount "Releases reserve"
+    platform.complianceService.travelRuleEngine -> bankPartner "Exchanges VASP data"
+    platform.complianceService.auditLogger -> platform.database "Anchors audit log"
+    platform.issuanceService.attestationProvider -> platform.database "Stores reserve reports"
+    platform.eventBus.blockchainEvents -> platform.stablecoinEngine.statusTracker "Notifies TX confirmation"
+    platform.eventBus.domainEvents -> platform.complianceService.amlScreener "Triggers post-TX AML analysis"
 }
 
 views {
     view stablecoinEngineComponents of platform.stablecoinEngine {
-        title "Componentes del Motor Stablecoin - Process Manager / Saga"
+        title "Stablecoin Engine Components - Process Manager / Saga"
         include *
         description "
-            El PaymentOrchestrator actua como Process Manager orquestando
-            la saga de pago en 6 pasos. Cada paso se registra en el SagaLogger
-            para permitir compensating transactions en caso de fallo.
-            Los adaptadores On-Ramp y Off-Ramp implementan el patron
-            Ports & Adapters (Hexagonal Architecture).
+            The PaymentOrchestrator acts as a Process Manager orchestrating
+            the 6-step payment saga. Each step is recorded in the SagaLogger
+            to enable compensating transactions in case of failure.
+            The On-Ramp and Off-Ramp Adapters implement the
+            Ports & Adapters (Hexagonal Architecture) pattern.
         "
         style customer {
             color muted
@@ -111,13 +111,13 @@ views {
     }
 
     view complianceComponents of platform.complianceService {
-        title "Componentes del Compliance - Off-chain + On-chain Anchor"
+        title "Compliance Components - Off-chain + On-chain Anchor"
         include *
         description "
-            Cumplimiento normativo Off-chain con anclaje On-chain.
-            El RuleEngine evalua reglas configurables, el AML Screener
-            analiza en tiempo real, y el AuditLogger ancla cada
-            resultado en blockchain como notario inmutable.
+            Off-chain compliance with On-chain anchoring.
+            The RuleEngine evaluates configurable rules, the AML Screener
+            performs real-time analysis, and the AuditLogger anchors every
+            result on blockchain as an immutable notary.
         "
         style platform.stablecoinEngine {
             color muted
@@ -125,12 +125,12 @@ views {
     }
 
     view issuanceComponents of platform.issuanceService {
-        title "Componentes del Servicio de Emision - Factory pattern"
+        title "Issuance Service Components - Factory Pattern"
         include *
         description "
-            MintController y BurnController implementan el patron Factory,
-            creando o destruyendo stablecoins contra reserva 1:1.
-            AttestationProvider genera los reportes de atestacion mensuales.
+            MintController and BurnController implement the Factory pattern,
+            creating or destroying stablecoins against 1:1 reserves.
+            AttestationProvider generates monthly attestation reports.
         "
         style bankPartner {
             color muted

@@ -1,59 +1,59 @@
 model {
-    customer = person "Cliente"
-    merchant = person "Comercio"
+    customer = person "Customer"
+    merchant = person "Merchant"
 
-    platform = softwareSystem "Plataforma Stablecoin Banking" {
-        webApp = container "App Web" "Angular" "Portal web del cliente"
-        mobileApp = container "App Movil" "React Native" "App movil del cliente"
-        apiGateway = container "API Gateway" "Kong" "Punto de entrada unico [Facade pattern]"
+    platform = softwareSystem "Stablecoin Banking Platform" {
+        webApp = container "Web App" "Angular" "Customer web portal"
+        mobileApp = container "Mobile App" "React Native" "Customer mobile app"
+        apiGateway = container "API Gateway" "Kong" "Single entry point [Facade pattern]"
 
-        coreAdapter = container "Adaptador Core Bancario" "Java" "Anti-Corruption Layer: aísla el core legacy"
-        stablecoinEngine = container "Motor Stablecoin" "Rust/Go" "Process Manager / Saga: orquesta el ciclo de pago completo"
-        issuanceService = container "Servicio de Emision" "Go" "Mint/burn de stablecoins contra reservas [Factory pattern]"
-        reserveManager = container "Gestor de Reservas" "Rust" "Control de reservas 1:1 y generacion de informes de atestacion"
-        complianceService = container "Servicio de Compliance" "Python" "Off-chain compliance con auditoria on-chain"
-        walletService = container "Servicio de Wallets" "Go" "Gestion de claves y firmas de transacciones blockchain"
-        notificationService = container "Servicio de Notificaciones" "Node.js" "Alertas y notificaciones a los actores del sistema"
-        blockchainNode = container "Nodo Blockchain" "Ethereum" "Conexion directa a redes blockchain"
-        indexer = container "Indexador On-Chain" "Rust" "Event Sourcing: lee eventos de blockchain como fuente de verdad"
-        eventBus = container "Bus de Eventos" "Redis / Kafka" "Message Broker: comunicación asincrona entre servicios"
-        database = container "Base de Datos" "PostgreSQL" "CQRS Read Model: almacenamiento de transacciones y contabilidad"
+        coreAdapter = container "Core Banking Adapter" "Java" "Anti-Corruption Layer: isolates legacy core banking"
+        stablecoinEngine = container "Stablecoin Engine" "Rust/Go" "Process Manager / Saga: orchestrates the full payment lifecycle"
+        issuanceService = container "Issuance Service" "Go" "Mint/burn stablecoins against reserves [Factory pattern]"
+        reserveManager = container "Reserve Manager" "Rust" "1:1 reserve tracking and attestation report generation"
+        complianceService = container "Compliance Service" "Python" "Off-chain compliance with on-chain audit anchoring"
+        walletService = container "Wallet Service" "Go" "Key management and blockchain transaction signing"
+        notificationService = container "Notification Service" "Node.js" "Alerts and notifications to system actors"
+        blockchainNode = container "Blockchain Node" "Ethereum" "Direct connection to blockchain networks"
+        indexer = container "On-Chain Indexer" "Rust" "Event Sourcing: reads blockchain events as source of truth"
+        eventBus = container "Event Bus" "Redis / Kafka" "Message Broker: async communication between services"
+        database = container "Database" "PostgreSQL" "CQRS Read Model: transaction storage and accounting"
     }
 
-    customer -> platform.webApp "Usa"
-    customer -> platform.mobileApp "Usa"
-    merchant -> platform.apiGateway "Consulta estado"
+    customer -> platform.webApp "Uses"
+    customer -> platform.mobileApp "Uses"
+    merchant -> platform.apiGateway "Checks status"
 
-    platform.webApp -> platform.apiGateway "Consume APIs REST"
-    platform.mobileApp -> platform.apiGateway "Consume APIs REST"
+    platform.webApp -> platform.apiGateway "Consumes REST APIs"
+    platform.mobileApp -> platform.apiGateway "Consumes REST APIs"
 
-    platform.apiGateway -> platform.coreAdapter "Delega operaciones core"
-    platform.apiGateway -> platform.stablecoinEngine "Inicia pago"
-    platform.apiGateway -> platform.complianceService "Valida cumplimiento"
+    platform.apiGateway -> platform.coreAdapter "Delegates core operations"
+    platform.apiGateway -> platform.stablecoinEngine "Initiates payment"
+    platform.apiGateway -> platform.complianceService "Validates compliance"
 
-    platform.stablecoinEngine -> platform.issuanceService "Solicita mint/burn"
-    platform.stablecoinEngine -> platform.walletService "Firma transaccion"
-    platform.stablecoinEngine -> platform.blockchainNode "Envia TX a blockchain"
-    platform.stablecoinEngine -> platform.database "Persiste operacion [CQRS command]"
-    platform.stablecoinEngine -> platform.eventBus "Publica eventos de dominio"
+    platform.stablecoinEngine -> platform.issuanceService "Requests mint/burn"
+    platform.stablecoinEngine -> platform.walletService "Signs transaction"
+    platform.stablecoinEngine -> platform.blockchainNode "Sends TX to blockchain"
+    platform.stablecoinEngine -> platform.database "Persists operation [CQRS command]"
+    platform.stablecoinEngine -> platform.eventBus "Publishes domain events"
 
-    platform.issuanceService -> platform.reserveManager "Verifica reservas 1:1"
-    platform.blockchainNode -> platform.indexer "Propaga bloques y eventos"
-    platform.indexer -> platform.eventBus "Publica confirmaciones on-chain"
-    platform.indexer -> platform.database "Sincroniza read model"
-    platform.complianceService -> platform.database "Almacena auditoria"
-    platform.eventBus -> platform.notificationService "Dispara notificaciones"
-    platform.eventBus -> platform.complianceService "Activa analisis AML"
-    platform.eventBus -> platform.stablecoinEngine "Notifica confirmaciones"
+    platform.issuanceService -> platform.reserveManager "Verifies 1:1 reserves"
+    platform.blockchainNode -> platform.indexer "Propagates blocks and events"
+    platform.indexer -> platform.eventBus "Publishes on-chain confirmations"
+    platform.indexer -> platform.database "Syncs read model"
+    platform.complianceService -> platform.database "Stores audit trail"
+    platform.eventBus -> platform.notificationService "Triggers notifications"
+    platform.eventBus -> platform.complianceService "Activates AML analysis"
+    platform.eventBus -> platform.stablecoinEngine "Notifies confirmations"
 
-    platform.coreAdapter -> platform.database "Sincroniza contabilidad legacy"
-    platform.notificationService -> customer "Envia alertas"
-    platform.notificationService -> merchant "Envia notificaciones de liquidacion"
+    platform.coreAdapter -> platform.database "Syncs legacy accounting"
+    platform.notificationService -> customer "Sends alerts"
+    platform.notificationService -> merchant "Sends settlement notifications"
 }
 
 views {
     view containers of platform {
-        title "Diagrama de Contenedores - Stablecoin Banking"
+        title "Container Diagram - Stablecoin Banking"
         include *
         style customer {
             color muted

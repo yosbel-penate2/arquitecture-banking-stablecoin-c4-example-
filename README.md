@@ -1,43 +1,43 @@
-# Stablecoin Banking Architecture con LikeC4
+# Stablecoin Banking Architecture with LikeC4
 
-## Visión General
+## Overview
 
-Este proyecto modela la arquitectura de una **Plataforma Bancaria de Pagos con Stablecoins** utilizando el modelo C4 y LikeC4 como herramienta de modelado.
+This project models the architecture of a **Stablecoin Banking Payment Platform** using the C4 model with LikeC4 as the modeling tool.
 
-La arquitectura sigue el patrón **Lift-and-Shift** (Crypto-Rails, Fiat at the Edges), donde el usuario final envía y recibe moneda fiduciaria mientras que la liquidación ocurre mediante stablecoins en blockchain.
+The architecture follows the **Lift-and-Shift** pattern (Crypto-Rails, Fiat at the Edges), where the end user sends and receives fiat currency while settlement occurs via stablecoins on blockchain.
 
-## Estructura
+## Structure
 
-- `software/likec4/diagrams/` - Archivos fuente `.c4` por nivel de abstracción
-- `software/likec4/images/` - Imágenes exportadas
-- `software/likec4/docs/` - Documentación de arquitectura
+- `software/likec4/diagrams/` - Source `.c4` files by abstraction level
+- `software/likec4/images/` - Exported images
+- `software/likec4/docs/` - Architecture documentation
 
-## Diagramas incluidos
+## Included Diagrams
 
-| Diagrama | Archivo | Descripción |
-|----------|---------|-------------|
-| Contexto | `diagrams/context.c4` | Sistema, actores externos y relaciones |
-| Contenedores | `diagrams/containers.c4` | Descomposición en contenedores con componentes internos |
-| Componentes | `diagrams/components.c4` | Motor Stablecoin y Servicio de Compliance |
+| Diagram | File | Description |
+|---------|------|-------------|
+| Context | `diagrams/context.c4` | System, external actors, and relationships |
+| Containers | `diagrams/containers.c4` | Decomposition into containers with internal components |
+| Components | `diagrams/components.c4` | Stablecoin Engine and Compliance Service |
 
-## Patrón de Arquitectura
+## Architecture Pattern
 
 ### Lift-and-Shift (Crypto-Rails, Fiat at the Edges)
 
-1. El cliente inicia un pago en EUR/USD (sin cambios en UX)
-2. El sistema convierte fiat a stablecoin (on-ramp)
-3. La liquidación ocurre on-chain
-4. El destinatario recibe fiat (off-ramp)
+1. Customer initiates a payment in EUR/USD (no UX changes)
+2. System converts fiat to stablecoin (on-ramp)
+3. Settlement occurs on-chain
+4. Recipient receives fiat (off-ramp)
 
-### Cinco Capas de Infraestructura
+### Five Infrastructure Layers
 
-1. **Reserve Management** - Reservas 1:1, informes de atestación
-2. **Issuance & Redemption** - Mint/burn contra reservas
-3. **Payment Rails & Settlement** - Enrutamiento y conciliación
-4. **Compliance & Identity** - KYC/AML, Travel Rule, sanciones
-5. **Reporting & Attestation** - Auditoría y reportes regulatorios
+1. **Reserve Management** - 1:1 reserves, attestation reports
+2. **Issuance & Redemption** - Mint/burn against reserves
+3. **Payment Rails & Settlement** - Routing and reconciliation
+4. **Compliance & Identity** - KYC/AML, Travel Rule, sanctions
+5. **Reporting & Attestation** - Audit and regulatory reporting
 
-## Referencias
+## References
 
 - [LikeC4](https://likec4.dev/)
 - [C4 Model](https://c4model.com/)

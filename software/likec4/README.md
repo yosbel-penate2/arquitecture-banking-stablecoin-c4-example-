@@ -1,21 +1,21 @@
-# Proyecto LikeC4 para Stablecoin Banking
+# LikeC4 Project for Stablecoin Banking
 
-Este subproyecto organiza la arquitectura del sistema de pagos con stablecoins mediante diagramas LikeC4.
+This subproject organizes the architecture of the stablecoin payment system using LikeC4 diagrams.
 
-## Estructura
+## Structure
 
-- `diagrams/` - Archivos fuente `.c4` por nivel de abstracción
-- `images/` - Imágenes exportadas para documentación
-- `docs/` - Documentación que referencia las imágenes generadas
+- `diagrams/` - Source `.c4` files by abstraction level
+- `images/` - Exported images for documentation
+- `docs/` - Documentation referencing the generated images
 
-## Diagramas incluidos
+## Included Diagrams
 
-- Contexto: `diagrams/context.c4`
-- Contenedores: `diagrams/containers.c4`
-- Componentes: `diagrams/components.c4`
+- Context: `diagrams/context.c4`
+- Containers: `diagrams/containers.c4`
+- Components: `diagrams/components.c4`
 
-## Uso recomendado
+## Recommended Usage
 
-1. Edita los archivos `.c4` en `diagrams/`.
-2. Genera o actualiza las imágenes en `images/`.
-3. Referencia las imágenes desde los documentos de `docs/`.
+1. Edit the `.c4` files in `diagrams/`.
+2. Generate or update the images in `images/`.
+3. Reference the images from documents in `docs/`.

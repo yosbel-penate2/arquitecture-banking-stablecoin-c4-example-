@@ -1,8 +1,8 @@
-# Imágenes LikeC4
+# LikeC4 Images
 
-Guarda aquí las imágenes exportadas de los diagramas `.c4`.
+Save exported images from `.c4` diagrams here.
 
-Archivos esperados:
+Expected files:
 - `context.svg`
 - `containers.svg`
 - `components.svg`

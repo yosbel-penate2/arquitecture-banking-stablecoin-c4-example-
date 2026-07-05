@@ -1,24 +1,17 @@
 model {
-    customer = person "Cliente / Pagador"
-    merchant = person "Comerciante / Empresa B2B"
-    regulator = person "Entes Reguladores" "FinCEN, FCA, VARA, CBUAE"
+    customer = person "Customer / Payer"
+    merchant = person "Merchant / B2B Enterprise"
+    regulator = person "Regulatory Bodies" "FinCEN, FCA, VARA, CBUAE"
 
-    bank = softwareSystem "Entidad Bancaria / PSP" "Gestiona cuentas fiduciarias y conversión fiat"
-    blockchain = softwareSystem "Redes Blockchain" "Ethereum, Solana, Polygon, Base, etc."
+    bank = softwareSystem "Banking Entity / PSP" "Manages fiat accounts and fiat conversion"
+    blockchain = softwareSystem "Blockchain Networks" "Ethereum, Solana, Polygon, Base, etc."
 
-    paymentGateway = softwareSystem "Pasarela de Pago con Stablecoins" "Sistema de liquidacion de pagos con stablecoins"
-
-    customer -> paymentGateway "Inicia pago"
-    merchant -> paymentGateway "Configura / Consulta"
-    paymentGateway -> blockchain "Liquidacion on-chain"
-    paymentGateway -> bank "Conversion Fiat <-> Stablecoin"
-    paymentGateway -> regulator "Reportes de cumplimiento"
-    bank -> paymentGateway "Validacion y liquidacion fiat"
+    paymentGateway = softwareSystem "Stablecoin Payment Gateway" "Stablecoin-powered payment settlement system"
 }
 
 views {
     view context of paymentGateway {
-        title "Diagrama de Contexto - Pasarela de Pago con Stablecoins"
+        title "Context Diagram - Stablecoin Payment Gateway"
         include *
     }
 }
