@@ -85,4 +85,15 @@ views {
             color muted
         }
     }
+
+    view components of platform.issuanceService {
+        title "Componentes del Servicio de Emision"
+        include *
+        style bankPartner {
+            color muted
+        }
+        style platform.database {
+            color muted
+        }
+    }
 }
