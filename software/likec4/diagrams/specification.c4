@@ -9,8 +9,18 @@ specification {
             shape roundedBox
         }
     }
-    element container
-    element component
+    element container {
+        style {
+            shape roundedBox
+            color primary
+        }
+    }
+    element component {
+        style {
+            shape box
+            color secondary
+        }
+    }
     element database {
         style {
             shape cylinder
