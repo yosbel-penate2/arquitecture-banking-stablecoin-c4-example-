@@ -69,6 +69,14 @@ views {
     view containers of platform {
         title "Container Diagram - Stablecoin Banking"
         include *
+        description "
+            12 containers grouped by bounded context. The API Gateway is the
+            single entry point (Facade). The Stablecoin Engine orchestrates
+            the payment saga via gRPC to Issuance, Wallet, and Compliance
+            services. Kafka decouples async flows (notifications, indexer).
+            PostgreSQL serves the CQRS Read Model; blockchain is the Write
+            Model. The Core Banking Adapter is an Anti-Corruption Layer.
+        "
         style customer {
             color muted
         }
