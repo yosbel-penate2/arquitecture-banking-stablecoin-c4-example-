@@ -78,24 +78,22 @@ model {
     platform.complianceService -> platform.stablecoinEngine "Returns validation result (allow/block)"
     platform.stablecoinEngine -> platform.issuanceService "gRPC: request mint (on-ramp) or burn (off-ramp)"
     platform.issuanceService -> platform.stablecoinEngine "Returns mint/burn result (success/failure)"
-    platform.stablecoinEngine.blockchainAdapter -> blockchainNetwork "Submits TX to Ethereum/Solana [CQRS Command]"
+    platform.stablecoinEngine -> blockchainNetwork "Submits TX via BlockchainAdapter [CQRS Command]"
     platform.stablecoinEngine -> platform.eventBus "Publishes PaymentStarted / PaymentCompleted (outbox pattern)"
-    platform.stablecoinEngine.blockchainAdapter -> platform.readModel "Persists command log"
-    platform.stablecoinEngine.statusTracker -> platform.readModel "Records confirmation status"
+    platform.stablecoinEngine -> platform.readModel "Persists command log (via BlockchainAdapter) / Records confirmation status (via StatusTracker)"
+    platform.complianceService -> blockchainNetwork "Anchors compliance hash (via AuditLogger) [Blockchain Notary]"
 
     customer -> platform.complianceService "Submits identity documents for KYC"
 
-    platform.issuanceService.mintController -> bankPartner.fiatAccount "ACH: locks 1:1 fiat reserve before mint"
-    platform.issuanceService.burnController -> bankPartner.fiatAccount "SEPA: releases fiat reserve after burn"
+    platform.issuanceService -> bankPartner.fiatAccount "ACH/SEPA: locks/releases 1:1 fiat reserve (via MintController / BurnController)"
     bankPartner -> platform.issuanceService "Confirms fiat reserve lock/unlock"
 
-    blockchainNetwork -> platform.stablecoinEngine "Emits TX confirmation events"
+    blockchainNetwork -> platform.stablecoinEngine "Emits TX confirmation events (via StatusTracker)"
 
-    platform.complianceService.travelRuleEngine -> bankPartner "Sends / receives VASP Travel Rule data"
-    platform.complianceService.auditLogger -> blockchainNetwork "Anchors compliance hash on-chain [Blockchain Notary]"
-    platform.issuanceService.attestationProvider -> platform.readModel "Stores reserve attestation reports"
-    platform.eventBus.blockchainEvents -> platform.stablecoinEngine.statusTracker "Notifies TXConfirmed / TXFailed"
-    platform.eventBus.domainEvents -> platform.complianceService.amlScreener "Triggers post-TX AML analysis"
+    platform.complianceService -> bankPartner "Sends/receives VASP Travel Rule data (via TravelRuleEngine)"
+    platform.issuanceService -> platform.readModel "Stores reserve attestation reports (via AttestationProvider)"
+    platform.eventBus -> platform.stablecoinEngine "Notifies TXConfirmed / TXFailed (via BlockchainEvents -> StatusTracker)"
+    platform.eventBus -> platform.complianceService "Triggers post-TX AML analysis (via DomainEvents -> AMLScreener)"
 }
 
 views {
