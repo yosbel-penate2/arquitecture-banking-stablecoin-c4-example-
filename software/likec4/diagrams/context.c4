@@ -22,6 +22,18 @@ model {
 }
 
 views {
+    view landscape {
+        title "System Landscape"
+        description """
+            The Stablecoin Payment Gateway connects end users (Customers, Merchants)
+            with external systems (Blockchain Networks, Banking PSPs, Custody Providers).
+            Regulators and Auditors consume compliance data and reserve attestation reports.
+            The system processes fiat-to-stablecoin payments with on-chain settlement,
+            1:1 reserve backing, and regulatory compliance anchoring.
+        """
+        include *
+    }
+
     view context of paymentGateway {
         title "Context Diagram - Stablecoin Payment Gateway"
         description """
